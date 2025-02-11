@@ -554,8 +554,8 @@ class AssistantSession:
     def remove_interaction(self, interaction: InteractionGroup) -> None:
         self._interactions.remove(interaction)
         
-    def clear_interactions(self) -> None:
-        self._interactions.clear()
+    def clear_interactions(self, cond: Callable[[InteractionGroup], bool] = lambda i: True) -> None:
+        self._interactions = [i for i in self._interactions if not cond(i)]
         
     def cleanup_interactions(self, older_than: timedelta):
         now = datetime.now()
@@ -602,6 +602,9 @@ class AssistantSession:
                 timeout=30
             )
         except openai.BadRequestError as e:
+            if 'invalid_image_url' in str(e):
+                self.clear_interactions(lambda i: i.contains_image)
+                return await self.complete(current_interaction)
             logger.error(e, exc_info=True)
             raise e
         
@@ -788,7 +791,7 @@ class Assistant(commands.Cog):
     def is_user_authorized(self, user: discord.User | discord.Member) -> bool:
         """Vérifie si l'utilisateur est autorisé à utiliser l'assistant
         Si l'utilisateur est membre d'un serveur autorisé, il est autorisé, sinon on vérifie sa configuration personnelle"""
-        user_auth = self.get_user_config(user).get('authorized', -1)
+        user_auth = dict(self.get_user_config(user)).get('authorized', -1)
         if user_auth == -1:
             mutual_guilds = [g for g in user.mutual_guilds if self.is_guild_authorized(g)]
             return bool(mutual_guilds)
