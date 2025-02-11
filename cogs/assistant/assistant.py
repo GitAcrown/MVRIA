@@ -581,7 +581,7 @@ class AssistantSession:
     
     def get_context(self) -> Sequence[ContextMessage]:
         ctx = []
-        self.cleanup_interactions(timedelta(minutes=90) if self.channel.guild else timedelta(hours=24))
+        self.cleanup_interactions(timedelta(minutes=1) if self.channel.guild else timedelta(hours=24))
         tokens = self.developer_prompt.token_count
         for interaction in self._interactions[::-1]:
             tokens += interaction.total_token_count
