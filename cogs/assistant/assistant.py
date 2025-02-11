@@ -519,6 +519,8 @@ class AssistantSession:
         self._interactions : list[InteractionGroup] = []
         self._last_cleanup = datetime.now()
         
+        self._session_start = datetime.now()
+        
     def __repr__(self) -> str:
         return f"<AssistantSession {self.channel}>"
     
@@ -1189,6 +1191,7 @@ class Assistant(commands.Cog):
         
         # Informations sur la session
         embed.add_field(name="Type de session", value=f"```{'Privée' if session.is_private else 'Serveur'}```")
+        embed.add_field(name="Active depuis", value=f"```{session._session_start.strftime('%d/%m/%Y à %H:%M:%S')}```")
         embed.add_field(name="Nb. d'interactions", value=f"```{len(session._interactions)}```")
         embed.add_field(name="Tokens en mémoire", value=f"```{sum(i.total_token_count for i in session._interactions)}/{session.context_window}```")
         
