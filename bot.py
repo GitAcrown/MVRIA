@@ -107,7 +107,7 @@ async def main():
                     synced = await ctx.bot.tree.sync()
 
                 await ctx.send(
-                    f"Synchronisation de {len(synced)} commandes {'globales' if spec is None else 'au serveur actuel'} effectuée : {', '.join(synced)}" 
+                    f"Synchronisation de {len(synced)} commandes {'globales' if spec is None else 'au serveur actuel'} effectuée : {', '.join((f'`{c.name}`' for c in synced))}."
                 )
                 return
 
