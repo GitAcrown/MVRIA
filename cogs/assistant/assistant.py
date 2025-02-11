@@ -661,8 +661,8 @@ class Assistant(commands.Cog):
         user_config = dataio.TableBuilder(
             '''CREATE TABLE IF NOT EXISTS user_config (
                 user_id INTEGER PRIMARY KEY,
-                custom_instructions TEXT,
-                temperature REAL,
+                custom_instructions TEXT DEFAULT '',
+                temperature REAL DEFAULT 0.9,
                 authorized INTEGER DEFAULT -1
                 )'''
         )
@@ -729,7 +729,9 @@ class Assistant(commands.Cog):
         
         channel = None
         if isinstance(bucket, discord.User) or isinstance(bucket, discord.Member):
-            custom_instructions = self.get_user_config(bucket).get('custom_instructions', DEFAULT_CUSTOM_DM)
+            custom_instructions = self.get_user_config(bucket).get('custom_instructions')
+            if not custom_instructions:
+                custom_instructions = DEFAULT_CUSTOM_DM
             temperature = float(self.get_user_config(bucket).get('temperature', DEFAULT_TEMPERATURE))
             if not bucket.dm_channel:
                 try:
