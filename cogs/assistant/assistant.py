@@ -857,13 +857,17 @@ class Assistant(commands.Cog):
             if cog.qualified_name == self.qualified_name:
                 continue
             if hasattr(cog, 'GPT_TOOLS'):
-                self._add_tools(*cog.GPT_TOOLS) #type: ignore
-                logger.info(f'i --- Added tools from {cog.qualified_name}')
+                added = self._add_tools(*cog.GPT_TOOLS) #type: ignore
+                if added:
+                    logger.info(f"i --- Outils ajoutés depuis '{cog.qualified_name}'")
     
-    def _add_tools(self, *tools: GPTTool):
+    def _add_tools(self, *tools: GPTTool) -> list[GPTTool]:
+        added = []
         for tool in tools:
             if tool.name not in (t.name for t in self.GPT_TOOLS):
                 self.GPT_TOOLS.append(tool)
+                added.append(tool)
+        return added
         
     def _remove_tools(self, tools_names: list[str]):
         self.GPT_TOOLS = [t for t in self.GPT_TOOLS if t.name not in tools_names]
