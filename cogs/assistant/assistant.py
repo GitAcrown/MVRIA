@@ -1167,8 +1167,8 @@ class Assistant(commands.Cog):
             self.set_guild_config(bucket.guild, temperature=temp)
             
         if temp > 1.4:
-            return await interaction.response.send_message(f"<:settings_icon:1338659554921156640> **Température mise à jour** · La température de génération est désormais à ***{temp}***.\n-# Attention, une température élevée peut entraîner des réponses incohérentes.", ephemeral=True)
-        await interaction.response.send_message(f"<:settings_icon:1338659554921156640> **Température mise à jour** · La température de génération est désormais à ***{temp}***.", ephemeral=True)
+            return await interaction.response.send_message(f"<:settings_icon:1338659554921156640> **Température mise à jour** · La température de génération est désormais à ***{temp}***.\n-# Attention, une température élevée peut entraîner des réponses incohérentes.")
+        await interaction.response.send_message(f"<:settings_icon:1338659554921156640> **Température mise à jour** · La température de génération est désormais à ***{temp}***.")
         
     @app_commands.command(name='info')
     async def cmd_info(self, interaction: Interaction):
@@ -1209,7 +1209,7 @@ class Assistant(commands.Cog):
             return await interaction.response.send_message("<:error_icon:1338657710333362198> **Erreur interne** × Impossible de récupérer la session de chat.", ephemeral=True)
         
         session.clear_interactions()
-        await interaction.response.send_message("<:settings_icon:1338659554921156640> **Session réinitialisée** × La session de l'assistant a été réinitialisée.", ephemeral=True)
+        await interaction.response.send_message("<:settings_icon:1338659554921156640> **Session réinitialisée** × La mémoire de la session en cours de l'assistant a été réinitialisée.")
         
     @app_commands.command(name='factoryreset')
     async def cmd_factoryreset(self, interaction: Interaction):
