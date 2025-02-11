@@ -769,7 +769,10 @@ class Assistant(commands.Cog):
         
     # User
     def get_user_config(self, user: discord.User | discord.Member) -> dict:
-        return self.data.get().fetchone('SELECT * FROM user_config WHERE user_id = ?', user.id) or {}
+        r = self.data.get().fetchone('SELECT * FROM user_config WHERE user_id = ?', user.id)
+        if not r:
+            return {}
+        return dict(r)
     
     def set_user_custom_instructions(self, user: discord.User | discord.Member, instructions: str):
         self.data.get().execute('INSERT OR REPLACE INTO user_config (user_id, custom_instructions) VALUES (?, ?)', user.id, instructions)
@@ -791,7 +794,7 @@ class Assistant(commands.Cog):
     def is_user_authorized(self, user: discord.User | discord.Member) -> bool:
         """Vérifie si l'utilisateur est autorisé à utiliser l'assistant
         Si l'utilisateur est membre d'un serveur autorisé, il est autorisé, sinon on vérifie sa configuration personnelle"""
-        user_auth = dict(self.get_user_config(user)).get('authorized', -1)
+        user_auth = self.get_user_config(user).get('authorized', -1)
         if user_auth == -1:
             mutual_guilds = [g for g in user.mutual_guilds if self.is_guild_authorized(g)]
             return bool(mutual_guilds)
