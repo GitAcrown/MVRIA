@@ -378,7 +378,7 @@ class Reminders(commands.Cog):
         if not reminders:
             return ascog.ToolAnswerMessage({'message': 'Aucun rappel enregistré.'}, tool_call.data['id'])
         
-        data = [{'id': r._id, 'content': r.content, 'remind_at': r.remind_at.strftime('%d/%m/%Y %H:%M')} for r in reminders]
+        data = [{'id': r._id, 'content': r.content, 'remind_at': r.remind_at.strftime('%d/%m/%Y %H:%M'), 'is_recurring': r.is_recurring, 'rrule': r.rrule, 'end_date': r.end_date.strftime('%d/%m/%Y %H:%M') if r.end_date else None} for r in reminders]
         return ascog.ToolAnswerMessage({'reminders': data}, tool_call.data['id'])
     
     def _tool_remove_reminder(self, tool_call: ascog.ToolCall, interaction: ascog.InteractionGroup) -> ascog.ToolAnswerMessage:
