@@ -1089,7 +1089,7 @@ class Assistant(commands.Cog):
         
     # COMMANDES =================================================================
     
-    @app_commands.command(name='behaviour')
+    @app_commands.command(name='behavior')
     async def cmd_custom_instructions(self, interaction: Interaction):
         """Permet de personaliser le comportement de l'assistant."""
         bucket = interaction.channel if interaction.guild else interaction.user
