@@ -752,7 +752,8 @@ class Assistant(commands.Cog):
                                    custom_instructions, 
                                    temperature, 
                                    self.GPT_TOOLS, 
-                                   session_user_name=bucket.name if isinstance(bucket, (discord.User, discord.Member)) else '')
+                                   session_user_name=bucket.name if isinstance(bucket, (discord.User, discord.Member)) else '',
+                                   context_window=int(DEFAULT_CONTEXT_WINDOW / 4) if isinstance(bucket, (discord.User, discord.Member)) else DEFAULT_CONTEXT_WINDOW)
         self._sessions[bucket.id] = session
         return session
     
