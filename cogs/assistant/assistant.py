@@ -38,7 +38,7 @@ DEFAULT_TEMPERATURE = 0.9
 DEFAULT_MAX_COMPLETION_TOKENS = 512
 DEFAULT_CONTEXT_WINDOW = 16384
 DEFAULT_TOOLS_ENALBED = True
-CONTEXT_CLEANUP_DELAY = timedelta(minutes=1)
+CONTEXT_CLEANUP_DELAY = timedelta(minutes=10)
 
 DEFAULT_CUSTOM_GUILD = "Réponds aux questions des utilisateurs de manière concise et simple en adaptant ton langage à celui de tes interlocuteurs."
 DEFAULT_CUSTOM_DM = "Sois le plus direct et concis possible dans tes réponses. N'hésite pas à poser des questions pour mieux comprendre les besoins de l'utilisateur."
@@ -582,7 +582,7 @@ class AssistantSession:
     
     def get_context(self) -> Sequence[ContextMessage]:
         ctx = []
-        self.cleanup_interactions(timedelta(minutes=1) if self.channel.guild else timedelta(hours=24))
+        self.cleanup_interactions(timedelta(minutes=90) if self.channel.guild else timedelta(hours=24))
         tokens = self.developer_prompt.token_count
         for interaction in self._interactions[::-1]:
             tokens += interaction.total_token_count
