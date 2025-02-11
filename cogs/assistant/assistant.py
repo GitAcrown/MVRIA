@@ -1181,7 +1181,7 @@ class Assistant(commands.Cog):
         if not session:
             return await interaction.response.send_message("<:error_icon:1338657710333362198> **Erreur interne** × Impossible de récupérer la session de chat.", ephemeral=True)
         
-        embed = discord.Embed(title="<:settings_icon:1338659554921156640> Informations sur l'assistant", color=discord.Color(0x000001))
+        embed = discord.Embed(title="<:settings_icon:1338659554921156640> Assistant · Infos sur la session", color=discord.Color(0x000001))
         embed.set_thumbnail(url=self.bot.user.display_avatar.url if self.bot.user else None)
         embed.set_footer(text="Implémentation de GPT4o-mini et Whisper-1 (par OpenAI)", icon_url="https://static-00.iconduck.com/assets.00/openai-icon-2021x2048-4rpe5x7n.png")
         
