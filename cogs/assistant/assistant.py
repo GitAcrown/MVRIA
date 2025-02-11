@@ -38,7 +38,7 @@ DEFAULT_TEMPERATURE = 0.9
 DEFAULT_MAX_COMPLETION_TOKENS = 512
 DEFAULT_CONTEXT_WINDOW = 16384
 DEFAULT_TOOLS_ENALBED = True
-CONTEXT_CLEANUP_DELAY = timedelta(minutes=15)
+CONTEXT_CLEANUP_DELAY = timedelta(minutes=1)
 
 DEFAULT_CUSTOM_GUILD = "Réponds aux questions des utilisateurs de manière concise et simple en adaptant ton langage à celui de tes interlocuteurs."
 DEFAULT_CUSTOM_DM = "Sois le plus direct et concis possible dans tes réponses. N'hésite pas à poser des questions pour mieux comprendre les besoins de l'utilisateur."
@@ -564,6 +564,7 @@ class AssistantSession:
         self._interactions = [i for i in self._interactions if not cond(i)]
         
     def cleanup_interactions(self, older_than: timedelta):
+        print('xxx Cleaning up interactions')
         now = datetime.now(pytz.utc)
         if self._last_cleanup + CONTEXT_CLEANUP_DELAY < now:
             self.clear_interactions(lambda i: i.last_message.timestamp.astimezone(pytz.utc) < now - older_than)
