@@ -1096,7 +1096,6 @@ class Assistant(commands.Cog):
     # COMMANDES =================================================================
     
     @app_commands.command(name='behavior')
-    @app_commands.allowed_installs(guilds=True, users=True)
     async def cmd_custom_instructions(self, interaction: Interaction):
         """Permet de personaliser le comportement de l'assistant."""
         bucket = interaction.channel if interaction.guild else interaction.user
@@ -1130,7 +1129,6 @@ class Assistant(commands.Cog):
         await interaction.followup.send(f"## <:settings_icon:1338659554921156640> __Instructions de comportement modifiées :__\n>>> *{new_prompt}*\n-# Il est conseillé d'effectuer un `/reboot` afin d'éviter un conflit avec les anciennes instructions.", ephemeral=False)
         
     @app_commands.command(name='temperature')
-    @app_commands.allowed_installs(guilds=True, users=True)
     @app_commands.rename(temp='température')
     async def cmd_temperature(self, interaction: Interaction, temp: app_commands.Range[float, 0.0, 2.0]):
         """Modifier le degré de créativité de l'assistant.
@@ -1162,7 +1160,6 @@ class Assistant(commands.Cog):
         await interaction.response.send_message(f"<:settings_icon:1338659554921156640> **Température mise à jour** · La température de génération est désormais à ***{temp}***.", ephemeral=True)
         
     @app_commands.command(name='info')
-    @app_commands.allowed_installs(guilds=True, users=True)
     async def cmd_info(self, interaction: Interaction):
         """Afficher les informations sur l'assistant sur la session en cours."""
         bucket = interaction.channel if interaction.guild else interaction.user
@@ -1189,7 +1186,6 @@ class Assistant(commands.Cog):
         await interaction.response.send_message(embed=embed)
         
     @app_commands.command(name='reboot')
-    @app_commands.allowed_installs(guilds=True, users=True)
     async def cmd_reboot(self, interaction: Interaction):
         """Réinitialiser la mémoire de la session actuelle de l'assistant."""
         bucket = interaction.channel if interaction.guild else interaction.user
@@ -1204,7 +1200,6 @@ class Assistant(commands.Cog):
         await interaction.response.send_message("<:settings_icon:1338659554921156640> **Session réinitialisée** × La session de l'assistant a été réinitialisée.", ephemeral=True)
         
     @app_commands.command(name='factoryreset')
-    @app_commands.allowed_installs(guilds=True, users=True)
     async def cmd_factoryreset(self, interaction: Interaction):
         """Réinitialiser les paramètres de l'assistant."""
         bucket = interaction.channel if interaction.guild else interaction.user
@@ -1238,7 +1233,6 @@ class Assistant(commands.Cog):
     usernotes_group = app_commands.Group(name='notes', description="Gestion de vos notes personnelles")
     
     @usernotes_group.command(name='list')
-    @app_commands.allowed_installs(guilds=True, users=True)
     async def cmd_usernotes_list(self, interaction: Interaction):
         """Afficher la liste de vos notes personnelles."""
         user = interaction.user
@@ -1253,7 +1247,6 @@ class Assistant(commands.Cog):
         await interaction.response.send_message(embed=embed, ephemeral=True)
         
     @usernotes_group.command(name='delete')
-    @app_commands.allowed_installs(guilds=True, users=True)
     @app_commands.rename(key='clé')
     async def cmd_usernotes_delete(self, interaction: Interaction, key: str | None = None):
         """Supprimer une ou toutes vos notes personnelles
@@ -1283,7 +1276,6 @@ class Assistant(commands.Cog):
         await interaction.edit_original_response(content=f"<:trash_icon:1338658009466929152> **Note supprimée** · La note de l'assistant associée à vous pour la clé `{key}` a été supprimée.", view=None)
         
     @cmd_usernotes_delete.autocomplete('key')
-    @app_commands.allowed_installs(guilds=True, users=True)
     async def autocomplete_key_callback(self, interaction: Interaction, current: str):
         user = interaction.user
         keys = self.get_user_notes(user).keys()
