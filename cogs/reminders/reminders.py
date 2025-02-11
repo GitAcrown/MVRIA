@@ -211,6 +211,16 @@ class Reminders(commands.Cog):
             "chaque année": "FREQ=YEARLY"
         }
         return mapping.get(text)
+    
+    def parse_rrule_to_natural(self, rrule: str) -> str:
+        mapping = {
+            "FREQ=HOURLY": "chaque heure",
+            "FREQ=DAILY": "chaque jour",
+            "FREQ=WEEKLY": "chaque semaine",
+            "FREQ=MONTHLY": "chaque mois",
+            "FREQ=YEARLY": "chaque année"
+        }
+        return mapping.get(rrule, rrule)
 
     # Envoi de rappels ---------------------------------------------------------
     
@@ -242,7 +252,7 @@ class Reminders(commands.Cog):
         header = "## <:bell_icon:1338660193466191962> __Rappels enregistrés :__\n"
         lines = []
         for reminder in reminders:
-            recur_tag = "[R] " if reminder.is_recurring else ""
+            recur_tag = f"{self.parse_rrule_to_natural(reminder.rrule)} • " if reminder.is_recurring and reminder.rrule else ""
             time_format = f"<t:{int(reminder.remind_at.timestamp())}:F>"
             lines.append(f"• {recur_tag}{time_format} → `{reminder.content}`")
         await interaction.response.send_message(header + "\n".join(lines), ephemeral=True)
