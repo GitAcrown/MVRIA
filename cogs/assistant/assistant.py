@@ -223,7 +223,7 @@ class MessageChunk:
         if self.type == 'text':
             return len(tokenizer.encode(self.data['text']))
         elif self.type == 'image_url':
-            return 85
+            return 250 # Estimation vague
         return 0
        
     @classmethod
@@ -237,7 +237,7 @@ class TextChunk(MessageChunk):
         super().__init__(type='text', text=text)
     
 class ImageURLChunk(MessageChunk):
-    def __init__(self, image_url: str, detail: Literal['low', 'high'] = 'low'):
+    def __init__(self, image_url: str, detail: Literal['low', 'high', 'auto'] = 'auto'):
         super().__init__(type='image_url', image_url={'url': image_url, 'detail': detail})
     
 # MESSAGES ---------------------------------------------------------------------
