@@ -45,7 +45,8 @@ DEFAULT_CUSTOM_DM = "Sois le plus direct et concis possible dans tes réponses. 
 
 GUILD_DEVELOPER_PROMPT = lambda d: f'''[BEHAVIOR]
 Tu es {d['assistant_name']}, un chatbot conversant avec des utilisateurs dans un salon textuel Discord.
-Le nom des utilisateurs précèdent leurs messages ('pseudo:message'). Ne met pas ton propre nom devant tes messages.
+Les messages d'utilisateur sont au format '<pseudo> <horodatage> : <message>'.
+Ne met jamais ton propre nom ou l'horodatage devant tes réponses.
 Tu peux analyser les images qu'on te donne.
 [INFO]
 - Current date/time (ISO 8601): {d['current_datetime']}
@@ -59,7 +60,8 @@ Tu es encouragé à utiliser plusieurs outils à la fois si nécessaire.
 
 DM_DEVELOPER_PROMPT = lambda d: f'''[BEHAVIOR]
 Tu es {d['assistant_name']}, un assistant personnel ayant pour but d'aider ton utilisateur dans ses tâches quotidiennes.
-Tu peux analyser les images qu'il te donne.
+Les messages de l'utilisateur sont au format '<horodatage> : <message>'. Ne met jamais l'horodatage devant tes réponses.
+Tu peux analyser les images que l'utilisateur te donne.
 [INFO]
 - User name: {d['user_name']}
 - Current date/time (ISO 8601): {d['current_datetime']}
@@ -365,15 +367,16 @@ class UserMessage(ContextMessage):
         ref_message = message.reference.resolved if message.reference else None
         if message.content:
             author_name = message.author.name if not message.author.bot else f'{message.author.name}[BOT]'
+            horodatage = message.created_at.astimezone(pytz.timezone('Europe/Paris')).isoformat()
             san_content = message.content.replace(guild.me.mention, '').strip() if guild else message.content
             if message.guild:
-                msg_content = f'{author_name}:{san_content}'
+                msg_content = f'{author_name} {horodatage}:{san_content}'
             else:
-                msg_content = san_content # On ne met pas le nom de l'auteur dans les messages privés
+                msg_content = f'{horodatage}:{san_content}'
             if isinstance(ref_message, discord.Message) and ref_message.content:
                 if not ref_message.author.id == _BOT_ID:
                     ref_author_name = ref_message.author.name if not ref_message.author.bot else f'{ref_message.author.name}[BOT]'
-                    msg_content = f'[QUOTING:] {ref_author_name}:{ref_message.clean_content}\n[MESSAGE:] {msg_content}'
+                    msg_content = f'[QUOTING:] {ref_author_name} {ref_message.created_at.astimezone(pytz.timezone("Europe/Paris")).isoformat()}:{ref_message.content}\n[MESSAGE:] {msg_content}'
             content.append(TextChunk(msg_content))
                 
         image_urls = []
@@ -560,7 +563,7 @@ class AssistantSession:
     def cleanup_interactions(self, older_than: timedelta):
         now = datetime.now()
         if self._last_cleanup + CONTEXT_CLEANUP_DELAY < now:
-            self._interactions = [i for i in self._interactions if i.last_message.timestamp + older_than >= now and i.completed]
+            self.clear_interactions(lambda i: i.last_message.timestamp + older_than < now)
             self._last_cleanup = now
             
     # Outils
