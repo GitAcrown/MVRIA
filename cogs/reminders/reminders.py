@@ -226,7 +226,7 @@ class Reminders(commands.Cog):
     
     async def send_reminder(self, reminder: UserReminder):
         if reminder.is_recurring:
-            text = f"*{reminder.content}*\n-# <:bell_ring_icon:1338660290077655141> <t:{int(reminder.remind_at.timestamp())}:R> <:loop_icon:1338661846626074655> · {reminder.user.mention}"
+            text = f"*{reminder.content}*\n-# <:bell_ring_icon:1338660290077655141><:loop_icon:1338661846626074655> <t:{int(reminder.remind_at.timestamp())}:R> · {reminder.user.mention}"
         else:
             text = f"*{reminder.content}*\n-# <:bell_ring_icon:1338660290077655141> <t:{int(reminder.remind_at.timestamp())}:R> · {reminder.user.mention}"
         try:
