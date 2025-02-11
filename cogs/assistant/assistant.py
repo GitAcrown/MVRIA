@@ -1230,7 +1230,7 @@ class Assistant(commands.Cog):
         
     # Mémoire ------------------------------------------------------------------
     
-    usernotes_group = app_commands.Group(name='notes', description="Gestion des notes de l'assistant vous concernant")
+    usernotes_group = app_commands.Group(name='usernotes', description="Gestion des notes de l'assistant vous concernant")
     
     @usernotes_group.command(name='list')
     async def cmd_usernotes_list(self, interaction: Interaction):
