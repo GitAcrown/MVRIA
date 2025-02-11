@@ -563,9 +563,9 @@ class AssistantSession:
         self._interactions = [i for i in self._interactions if not cond(i)]
         
     def cleanup_interactions(self, older_than: timedelta):
-        now = datetime.now()
+        now = datetime.now(pytz.utc)
         if self._last_cleanup + CONTEXT_CLEANUP_DELAY < now:
-            self.clear_interactions(lambda i: i.last_message.timestamp + older_than < now)
+            self.clear_interactions(lambda i: i.last_message.timestamp.astimezone(pytz.utc) < now - older_than)
             self._last_cleanup = now
             
     # Outils
