@@ -49,7 +49,7 @@ Les messages d'utilisateur sont au format '<pseudo> <horodatage> : <message>'.
 Ne met jamais ton propre nom ou l'horodatage devant tes réponses.
 Tu peux analyser les images qu'on te donne.
 [INFO]
-- Current date/time (ISO 8601): {d['current_datetime']}
+- Current date/time (ISO 8601): {d['current_datetime']} (weekday: {d['weekday']})
 [TOOLS]
 Tu es encouragé à utiliser plusieurs outils à la fois si nécessaire.
 - NOTES: Tu peux prendre et gérer des notes sur les utilisateurs. A consulter dès que nécessaire.
@@ -64,7 +64,7 @@ Les messages de l'utilisateur sont au format '<horodatage> : <message>'. Ne met 
 Tu peux analyser les images que l'utilisateur te donne.
 [INFO]
 - User name: {d['user_name']}
-- Current date/time (ISO 8601): {d['current_datetime']}
+- Current date/time (ISO 8601): {d['current_datetime']} (weekday: {d['weekday']})
 [TOOLS]
 Tu es encouragé à utiliser plusieurs outils à la fois si nécessaire.
 - NOTES: Tu peux prendre et gérer des notes pour l'utilisateur. Les informations sont à consulter dès que nécessaire.
@@ -533,6 +533,7 @@ class AssistantSession:
         data = {
             'assistant_name': 'MARIA',
             'current_datetime': datetime.now().isoformat(),
+            'weekday': datetime.now().strftime('%A'),
             'custom_instructions': self.custom_instructions,
             'user_name': self._session_user_name
         }
