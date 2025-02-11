@@ -517,9 +517,9 @@ class AssistantSession:
         self._session_user_name = session_user_name
         
         self._interactions : list[InteractionGroup] = []
-        self._last_cleanup = datetime.now()
+        self._last_cleanup = datetime.now(pytz.utc)
         
-        self._session_start = datetime.now()
+        self._session_start = datetime.now(pytz.utc)
         
     def __repr__(self) -> str:
         return f"<AssistantSession {self.channel}>"
