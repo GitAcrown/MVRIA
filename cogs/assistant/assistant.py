@@ -27,7 +27,10 @@ from common.utils import fuzzy
 
 logger = logging.getLogger(f'MVRIA.{__name__.split(".")[-1]}')
 
-__BOT_ID = dotenv_values('.env')['APP_ID']
+env_values = dotenv_values('.env')
+if 'APP_ID' not in env_values:
+    raise KeyError("APP_ID not found in the .env file")
+__BOT_ID = env_values['APP_ID']
 
 COMPLETION_MODEL = 'gpt-4o-mini'
 AUDIO_TRANSCRIPTION_MODEL = 'whisper-1'
