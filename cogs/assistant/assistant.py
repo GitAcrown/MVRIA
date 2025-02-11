@@ -30,7 +30,7 @@ logger = logging.getLogger(f'MVRIA.{__name__.split(".")[-1]}')
 env_values = dotenv_values('.env')
 if 'APP_ID' not in env_values:
     raise KeyError("APP_ID not found in the .env file")
-__BOT_ID = env_values['APP_ID']
+_BOT_ID = env_values['APP_ID']
 
 COMPLETION_MODEL = 'gpt-4o-mini'
 AUDIO_TRANSCRIPTION_MODEL = 'whisper-1'
@@ -371,7 +371,7 @@ class UserMessage(ContextMessage):
             else:
                 msg_content = san_content # On ne met pas le nom de l'auteur dans les messages privés
             if isinstance(ref_message, discord.Message) and ref_message.content:
-                if not ref_message.author.id == __BOT_ID:
+                if not ref_message.author.id == _BOT_ID:
                     ref_author_name = ref_message.author.name if not ref_message.author.bot else f'{ref_message.author.name}[BOT]'
                     msg_content = f'[QUOTING:] {ref_author_name}:{ref_message.clean_content}\n[MESSAGE:] {msg_content}'
             content.append(TextChunk(msg_content))
