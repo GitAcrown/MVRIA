@@ -1215,6 +1215,7 @@ class Assistant(commands.Cog):
             return await interaction.response.send_message("<:error_icon:1338657710333362198> **Erreur interne** × Impossible de récupérer la session de chat.", ephemeral=True)
         
         session.clear_interactions()
+        session._last_cleanup = datetime.now()
         await interaction.response.send_message("<:settings_icon:1338659554921156640> **Session réinitialisée** × La mémoire de la session en cours de l'assistant a été réinitialisée.")
         
     @app_commands.command(name='factoryreset')
