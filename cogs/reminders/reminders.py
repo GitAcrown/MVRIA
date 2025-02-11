@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from dateutil.rrule import rrulestr  # <-- Added for recurrence support
+from dateutil.rrule import rrulestr
 
 import discord
 from discord import Interaction, app_commands
@@ -14,7 +14,6 @@ from cogs.assistant import assistant as ascog
 logger = logging.getLogger(f'MVRIA.{__name__.split(".")[-1]}')
 
 class UserReminder:
-    # Update: suppression du paramètre channel et des références associées
     def __init__(self, id: int, user: discord.User | discord.Member, content: str, remind_at: datetime, 
                  is_recurring: bool = False, rrule: str | None = None, end_date: datetime | None = None):
         self._id = id
