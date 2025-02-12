@@ -696,12 +696,13 @@ class Assistant(commands.Cog):
         self._busy : dict[int, bool] = {}
         self.GPT_TOOLS = [
             GPTTool(name='get_user_notes',
-                    description="Renvoie toutes les notes de l'utilisateur. Si une clé est donnée, renvoie la note correspondante.",
-                    properties={'key': {'type': ['string', 'null'], 'description': "Clé de registre de la note à récupérer (ex. age, ville...)"}},
+                    description="Renvoie toutes les notes de l'utilisateur visé. Si une clé est donnée, renvoie la note correspondante. Si aucun nom n'est donné, renvoie les notes de l'utilisateur demandeur.",
+                    properties={'user': {'type': ['string', 'null'], 'description': "Nom de l'utilisateur dont on veut récupérer les notes (par défaut le demandeur)"},
+                                'key': {'type': ['string', 'null'], 'description': "Clé de registre de la note à récupérer (ex. age, ville...)"}},
                     function=self._tool_get_user_notes,
                     footer="<:look_icon:1338658889243164712> Consultation de vos notes"),
             GPTTool(name='set_user_note',
-                    description="Définit une note pour l'utilisateur avec une clé et une valeur.",
+                    description="Définit une note pour l'utilisateur demandeur avec une clé et une valeur.",
                     properties={'key': {'type': 'string', 'description': "Clé de registre de la note (ex. age, ville...)"}, 
                                 'value': {'type': 'string', 'description': 'Nouvelle valeur de la note'}},
                     function=self._tool_set_user_note,
@@ -712,7 +713,7 @@ class Assistant(commands.Cog):
                     function=self._tool_fetch_users_notes,
                     footer="<:search_icon:1338658716328792127> Recherche de notes"),
             GPTTool(name='delete_user_note',
-                    description="Supprime une note de l'utilisateur avec une clé donnée.",
+                    description="Supprime une note de l'utilisateur demandeur avec une clé donnée.",
                     properties={'key': {'type': 'string', 'description': 'Clé de registre de la note à supprimer'}},
                     function=self._tool_delete_user_note,
                     footer="<:trash_icon:1338658009466929152> Suppression d'une note"),
@@ -815,6 +816,31 @@ class Assistant(commands.Cog):
     
     # Notes -------------------------------------------------------------------
     
+    def fetch_user_from_name(self, guild: discord.Guild, name: str) -> discord.Member | None:
+        user = discord.utils.find(lambda u: u.name == name.lower(), guild.members)
+        if user:
+            return user if user else None
+        
+        # On tente d'extraire un ID
+        poss_id = re.search(r'\d{17,19}', name)
+        if poss_id:
+            user = discord.utils.find(lambda u: u.id == int(poss_id.group(0)), guild.members)
+            return user if user else None
+        
+        # On cherche le membre le plus proche en nom
+        members = [member.name for member in guild.members]
+        closest_member = fuzzy.extract_one(name, members)
+        if closest_member:
+            user = discord.utils.find(lambda u: u.name == closest_member[0], guild.members)
+            return user if user else None
+        
+        # On cherche le membre le plus proche en surnom
+        nicknames = [member.nick for member in guild.members if member.nick]
+        closest_nickname = fuzzy.extract_one(name, nicknames, score_cutoff=90)
+        if closest_nickname:
+            user = discord.utils.find(lambda u: u.nick == closest_nickname[0], guild.members)
+            return user if user else None
+    
     def get_user_notes(self, user: discord.User | discord.Member) -> dict:
         r = self.data.get().fetchall('SELECT * FROM user_notes WHERE user_id = ?', user.id)
         return {row['key']: row['value'] for row in r} if r else {}
@@ -874,9 +900,19 @@ class Assistant(commands.Cog):
         self.GPT_TOOLS = [t for t in self.GPT_TOOLS if t.name not in tools_names]
         
     def _tool_get_user_notes(self, tool_call: ToolCall, interaction: InteractionGroup) -> ToolAnswerMessage:
-        user = interaction.fetch_author()
+        user = None
+        if  tool_call.arguments.get('user'):
+            user = discord.utils.find(lambda u: u.name == tool_call.arguments['user'], self.bot.get_all_members())
+            if not user:
+                channel = interaction.fetch_channel()
+                if channel and channel.guild:
+                    user = self.fetch_user_from_name(channel.guild, tool_call.arguments['user'])
+        elif interaction.fetch_author():
+            user  = interaction.fetch_author()
+            
         if not user:
             return ToolAnswerMessage({'error': 'Aucun utilisateur trouvé'}, tool_call.data['id'])
+        
         notes = self.get_user_notes(user)
         key = tool_call.arguments.get('key')
         if not key: # On renvoie toutes les notes
