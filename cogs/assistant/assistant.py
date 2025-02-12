@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Callable, Iterable, Literal, Sequence
 from dotenv import dotenv_values
 from googlesearch import search
+import numexpr as ne
 
 import discord
 import openai
@@ -55,6 +56,7 @@ Tu es encouragé à utiliser plusieurs outils à la fois si nécessaire.
 - NOTES: Tu peux prendre et gérer des notes sur les utilisateurs. A consulter dès que nécessaire.
 - REMINDERS: Tu peux créer des rappels pour les utilisateurs lorsqu'ils le demandent. A proposer dès que ça peut être utile.
 - WEB PAGES SEARCH: Tu peux rechercher des sites et obtenir de courtes descriptions de ceux-ci. A utiliser pour répondre à des questions.
+- EVALUATE MATH: Tu peux évaluer des expressions mathématiques. A utiliser pour répondre à des questions.
 [CUSTOM INSTRUCTIONS]
 {d['custom_instructions']}'''
 
@@ -70,6 +72,7 @@ Tu es encouragé à utiliser plusieurs outils à la fois si nécessaire.
 - NOTES: Tu peux prendre et gérer des notes pour l'utilisateur. Les informations sont à consulter dès que nécessaire.
 - REMINDERS: Tu peux créer des rappels pour l'utilisateur lorsqu'il le demande. A proposer dès que ça peut être utile.
 - WEB PAGES SEARCH: Tu peux rechercher des sites et obtenir de courtes descriptions de ceux-ci. A utiliser pour répondre à des questions.
+- EVALUATE MATH: Tu peux évaluer des expressions mathématiques. A utiliser pour répondre à des questions.
 [CUSTOM INSTRUCTIONS]
 {d['custom_instructions']}'''
 
@@ -724,6 +727,11 @@ class Assistant(commands.Cog):
                                 'lang': {'type': 'string', 'description': "Langue de la page (ex. 'fr')"}},
                     function=self._tool_search_web_pages,
                     footer="<:web_icon:1338659113638297670> Recherche web"),
+            GPTTool(name='math_eval',
+                   description="Évalue une expression mathématique de manière sécurisée. Utilise la syntaxe Python standard avec les opérateurs mathématiques classiques.",
+                   properties={'expression': {'type': 'string', 'description': "L'expression mathématique à évaluer"}},
+                   function=self._tool_math_eval,
+                   footer="<:math_icon:1339332020458754161> Calcul mathématique"),
         ]
         
     async def cog_unload(self):
@@ -971,6 +979,21 @@ class Assistant(commands.Cog):
         for r in self.search_web_pages(query, lang, num):
             results.append({'title': r.title, 'url': r.url, 'description': r.description}) #type: ignore
         return ToolAnswerMessage({'results': results}, tool_call.data['id'])
+    
+    def _tool_math_eval(self, tool_call: ToolCall, interaction: InteractionGroup) -> ToolAnswerMessage:
+        """Évalue une expression mathématique de manière sécurisée"""
+        expr = tool_call.arguments.get('expression', '').strip()
+        if not expr:
+            return ToolAnswerMessage({'error': 'Expression manquante'}, tool_call.data['id'])
+        
+        try:
+            # On évalue l'expression de manière sécurisée avec numexpr
+            result = float(ne.evaluate(expr))
+            if result.is_integer():
+                result = int(result)
+            return ToolAnswerMessage({'result': result, 'expression': expr}, tool_call.data['id'])
+        except Exception as e:
+            return ToolAnswerMessage({'error': f"Erreur d'évaluation : {str(e)}"}, tool_call.data['id'])
     
     # AUDIO --------------------------------------------------------------------
     
