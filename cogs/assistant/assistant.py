@@ -611,6 +611,7 @@ class AssistantSession:
                 max_tokens=self.max_completion_tokens,
                 temperature=self.temperature,
                 tools=[t.to_dict for t in self.tools], #type: ignore
+                parallel_tool_calls=False,
                 timeout=30
             )
         except openai.BadRequestError as e:
