@@ -300,6 +300,8 @@ class Reminders(commands.Cog):
         if not time:
             return await interaction.response.send_message("<:error_icon:1338657710333362198> **Erreur** × Date non reconnue.", ephemeral=True)
         fin = self.extract_time_from_string(end_date) if end_date else None
+        if fin and fin < time:
+            return await interaction.response.send_message("<:error_icon:1338657710333362198> **Erreur** × Date de fin antérieure à la date du rappel.", ephemeral=True)
         parsed_rrule = self.parse_natural_recurrence(recurrence.lower())
         if not parsed_rrule:
             return await interaction.response.send_message("<:error_icon:1338657710333362198> **Erreur** × Récurrence non reconnue. Utilisez par exemple 'tous les jours à 22h'.", ephemeral=True)
@@ -384,8 +386,15 @@ class Reminders(commands.Cog):
         if not parsed_rrule:
             return ascog.ToolAnswerMessage({'error': 'Récurrence non reconnue.'}, tool_call.data['id'])
         
+        fin = None
         end_date_iso = tool_call.arguments.get('end_date', '')
-        fin = self.extract_time_from_string(end_date_iso) if end_date_iso else None
+        if end_date_iso:
+            try:
+                fin = datetime.fromisoformat(end_date_iso) if end_date_iso else None
+            except ValueError:
+                return ascog.ToolAnswerMessage({'error': 'Date de fin non reconnue.'}, tool_call.data['id'])
+            if fin and fin < remind_at:
+                return ascog.ToolAnswerMessage({'error': 'Date de fin antérieure à la date du rappel.'}, tool_call.data['id'])
         
         self.add_reminder(user, content, remind_at, True, parsed_rrule, fin)
         return ascog.ToolAnswerMessage({'user': user.id, 'content': content, 'remind_at': remind_at.strftime('%d/%m/%Y %H:%M'), 'recurrence': recurrence, 'end_date': end_date_iso}, tool_call.data['id'])
