@@ -567,7 +567,6 @@ class AssistantSession:
         self._interactions = [i for i in self._interactions if not cond(i)]
         
     def cleanup_interactions(self, older_than: timedelta):
-        print('xxx Cleaning up interactions')
         now = datetime.now(pytz.utc)
         if self._last_cleanup + CONTEXT_CLEANUP_DELAY < now:
             self.clear_interactions(lambda i: i.last_message.timestamp.astimezone(pytz.utc) < now - older_than)
@@ -585,7 +584,8 @@ class AssistantSession:
     
     def get_context(self) -> Sequence[ContextMessage]:
         ctx = []
-        self.cleanup_interactions(timedelta(minutes=90) if self.channel.guild else timedelta(hours=24))
+        cleanup_age = timedelta(minutes=90) if self.channel.guild else timedelta(hours=24)
+        self.cleanup_interactions(cleanup_age)
         tokens = self.developer_prompt.token_count
         for interaction in self._interactions[::-1]:
             tokens += interaction.total_token_count
@@ -1274,7 +1274,7 @@ class Assistant(commands.Cog):
             return await interaction.response.send_message("<:error_icon:1338657710333362198> **Erreur interne** × Impossible de récupérer la session de chat.", ephemeral=True)
         
         session.clear_interactions()
-        session._last_cleanup = datetime.now()
+        session._last_cleanup = datetime.now(pytz.utc)
         await interaction.response.send_message("<:settings_icon:1338659554921156640> **Session réinitialisée** × La mémoire de la session en cours de l'assistant a été réinitialisée.")
         
     @app_commands.command(name='factoryreset')
