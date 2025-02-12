@@ -242,20 +242,32 @@ class Reminders(commands.Cog):
     
     @reminder_group.command(name='list')
     async def cmd_list_reminders(self, interaction: Interaction):
-        """Liste vos rappels enregistrés"""
+        """Liste vos rappels enregistrés avec toutes les informations"""
         user = interaction.user
         reminders = self.get_reminders(user)
         if not reminders:
             await interaction.response.send_message("**Aucun rappel** • Vous n'avez aucun rappel enregistré.", ephemeral=True)
             return
         reminders.sort(key=lambda r: r.remind_at)
-        header = "## <:bell_icon:1338660193466191962> __Rappels enregistrés :__\n"
-        lines = []
+        embed = discord.Embed(
+            title="Rappels enregistrés",
+            description="Liste complète de vos rappels avec toutes les informations.",
+            color=discord.Color.blue()
+        )
         for reminder in reminders:
-            recur_tag = f"[{self.parse_rrule_to_natural(reminder.rrule).upper()}] " if reminder.is_recurring and reminder.rrule else ""
-            time_format = f"<t:{int(reminder.remind_at.timestamp())}:F>"
-            lines.append(f"• {recur_tag}{time_format} → `{reminder.content}`")
-        await interaction.response.send_message(header + "\n".join(lines), ephemeral=True)
+            remind_date = f"<t:{int(reminder.remind_at.timestamp())}:F>"
+            recurrence = self.parse_rrule_to_natural(reminder.rrule) if reminder.is_recurring and reminder.rrule else ""
+            end_date = f"<t:{int(reminder.end_date.timestamp())}:F>" if reminder.end_date else ""
+            field_value = (
+                f"**Date:** {remind_date}\n"
+                f"**Contenu:** {reminder.content}\n"
+            )
+            if reminder.is_recurring:
+                field_value += f"**Récurrence:** {recurrence}\n"
+                if reminder.end_date:
+                    field_value += f"**Fin de récurrence:** {end_date}\n"
+            embed.add_field(name=f"Rappel #{reminder._id}", value=field_value, inline=False)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
         
     reminder_add_subgroup = app_commands.Group(name='add', description='Ajouter manuellement un rappel', parent=reminder_group)
         
