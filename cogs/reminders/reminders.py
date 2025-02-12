@@ -250,9 +250,8 @@ class Reminders(commands.Cog):
             return
         reminders.sort(key=lambda r: r.remind_at)
         embed = discord.Embed(
-            title="Rappels enregistrés",
-            description="Liste complète de vos rappels avec toutes les informations.",
-            color=discord.Color.blue()
+            title="<:bell_icon:1338660193466191962> Vos rappels enregistrés",
+            color=discord.Color(0x000001)
         )
         for reminder in reminders:
             remind_date = f"<t:{int(reminder.remind_at.timestamp())}:F>"
