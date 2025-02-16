@@ -591,7 +591,6 @@ class AssistantSession:
             if tokens > self.context_window:
                 break
             ctx.append(interaction)
-        print([m.payload for i in ctx[::-1] for m in i.messages])
         return [self.developer_prompt] + [m for i in ctx[::-1] for m in i.messages]
     
     # Completion
