@@ -28,11 +28,6 @@ from common.utils import fuzzy
 
 logger = logging.getLogger(f'MVRIA.{__name__.split(".")[-1]}')
 
-env_values = dotenv_values('.env')
-if 'APP_ID' not in env_values:
-    raise KeyError("APP_ID not found in the .env file")
-_BOT_ID = env_values['APP_ID']
-
 COMPLETION_MODEL = 'gpt-4o-mini'
 AUDIO_TRANSCRIPTION_MODEL = 'whisper-1'
 DEFAULT_TEMPERATURE = 0.9
@@ -379,9 +374,8 @@ class UserMessage(ContextMessage):
             else:
                 msg_content = f'{horodatage}:{san_content}'
             if isinstance(ref_message, discord.Message) and ref_message.content:
-                if not ref_message.author.id == _BOT_ID:
-                    ref_author_name = ref_message.author.name if not ref_message.author.bot else f'{ref_message.author.name}[BOT]'
-                    msg_content = f'[QUOTING:] {ref_author_name} {ref_message.created_at.astimezone(pytz.timezone("Europe/Paris")).isoformat()}:{ref_message.content}\n[MESSAGE:] {msg_content}'
+                ref_author_name = ref_message.author.name if not ref_message.author.bot else f'{ref_message.author.name}[BOT]'
+                msg_content = f'[QUOTING:] {ref_author_name} {ref_message.created_at.astimezone(pytz.timezone("Europe/Paris")).isoformat()}:{ref_message.content}\n[MESSAGE:] {msg_content}'
             content.append(TextChunk(msg_content))
                 
         image_urls = []
@@ -582,11 +576,11 @@ class AssistantSession:
                 return t
         raise ValueError(f'Aucun outil trouvé pour {name}')
             
-    # Contexte 
+    # Contexte
     
     def get_context(self) -> Sequence[ContextMessage]:
         ctx = []
-        cleanup_age = timedelta(minutes=90) if self.channel.guild else timedelta(hours=24)
+        cleanup_age = timedelta(hours=4) if self.channel.guild else timedelta(hours=48)
         self.cleanup_interactions(cleanup_age)
         tokens = self.developer_prompt.token_count
         for interaction in self._interactions[::-1]:
@@ -731,7 +725,7 @@ class Assistant(commands.Cog):
                     function=self._tool_search_web_pages,
                     footer="<:web_icon:1338659113638297670> Recherche web"),
             GPTTool(name='math_eval',
-                   description="Évalue une expression mathématique de manière sécurisée. Utilise la syntaxe Python standard avec les opérateurs mathématiques classiques.",
+                   description="Évalue une expression mathématique. Utilise la syntaxe Python standard avec les opérateurs mathématiques classiques.",
                    properties={'expression': {'type': 'string', 'description': "L'expression mathématique à évaluer"}},
                    function=self._tool_math_eval,
                    footer="<:math_icon:1339332020458754161> Calcul mathématique"),
