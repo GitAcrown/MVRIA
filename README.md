@@ -26,6 +26,9 @@ Assistant personnel Discord intégrant GPT4o-mini et Whisper-1 de OpenAI
 - Ne peuvent plus être modifiés par un tiers
 - Ajout de la possibilité de faire des rappels récurrents (manuellement ou via assistant)
 
+### Recherche Web
+- Peut désormais parcourir une majorité des pages web trouvées
+
 ### Calculs mathématiques
 - L'assistant a désormais la capacité d'effectuer des calculs mathématiques exacts.
 
