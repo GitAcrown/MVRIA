@@ -10,6 +10,8 @@ from typing import Callable, Iterable, Literal, Sequence
 from dotenv import dotenv_values
 from googlesearch import search
 import numexpr as ne
+import requests
+from bs4 import BeautifulSoup
 
 import discord
 import openai
@@ -32,9 +34,10 @@ COMPLETION_MODEL = 'gpt-4o-mini'
 AUDIO_TRANSCRIPTION_MODEL = 'whisper-1'
 DEFAULT_TEMPERATURE = 0.9
 DEFAULT_MAX_COMPLETION_TOKENS = 512
-DEFAULT_CONTEXT_WINDOW = 8192
+DEFAULT_CONTEXT_WINDOW = 16384
 DEFAULT_TOOLS_ENALBED = True
 CONTEXT_CLEANUP_DELAY = timedelta(minutes=10)
+WEB_CHUNK_SIZE = 2000
 
 DEFAULT_CUSTOM_GUILD = "Réponds aux questions des utilisateurs de manière concise et simple en adaptant ton langage à celui de tes interlocuteurs."
 DEFAULT_CUSTOM_DM = "Sois le plus direct et concis possible dans tes réponses. N'hésite pas à poser des questions pour mieux comprendre les besoins de l'utilisateur."
@@ -51,7 +54,7 @@ Tu peux analyser les images qu'on te donne.
 Tu es encouragé à utiliser plusieurs outils à la fois si nécessaire.
 - NOTES: Tu peux prendre et gérer des notes sur les utilisateurs. A consulter dès que nécessaire.
 - REMINDERS: Tu peux créer des rappels pour les utilisateurs lorsqu'ils le demandent. A proposer dès que ça peut être utile.
-- WEB PAGES SEARCH: Tu peux rechercher des sites et obtenir de courtes descriptions de ceux-ci. A utiliser pour répondre à des questions.
+- WEB SEARCH: Tu peux rechercher des sites et les naviguer pour obtenir des informations. A utiliser pour répondre à des questions.
 - EVALUATE MATH: Tu peux évaluer des expressions mathématiques. A utiliser pour répondre à des questions.
 [CUSTOM INSTRUCTIONS]
 {d['custom_instructions']}'''
@@ -68,7 +71,7 @@ Tu peux analyser les images que l'utilisateur te donne.
 Tu es encouragé à utiliser plusieurs outils à la fois si nécessaire.
 - NOTES: Tu peux prendre et gérer des notes pour l'utilisateur. Les informations sont à consulter dès que nécessaire.
 - REMINDERS: Tu peux créer des rappels pour l'utilisateur lorsqu'il le demande. A proposer dès que ça peut être utile.
-- WEB PAGES SEARCH: Tu peux rechercher des sites et obtenir de courtes descriptions de ceux-ci. A utiliser pour répondre à des questions.
+- WEB SEARCH:  Tu peux rechercher des sites et les naviguer pour obtenir des informations. A utiliser pour répondre à des questions.
 - EVALUATE MATH: Tu peux évaluer des expressions mathématiques. A utiliser pour répondre à des questions.
 [CUSTOM INSTRUCTIONS]
 {d['custom_instructions']}'''
@@ -336,7 +339,7 @@ class ToolAnswerMessage(ContextMessage):
                  content: dict,
                  tool_call_id: str,
                  **kwargs) -> None:
-        super().__init__('tool', json.dumps(content, ensure_ascii=True), **kwargs)
+        super().__init__('tool', json.dumps(content), **kwargs)
         self.tool_call_id = tool_call_id
         
     @property
@@ -588,6 +591,7 @@ class AssistantSession:
             if tokens > self.context_window:
                 break
             ctx.append(interaction)
+        print([m.payload for i in ctx[::-1] for m in i.messages])
         return [self.developer_prompt] + [m for i in ctx[::-1] for m in i.messages]
     
     # Completion
@@ -605,7 +609,7 @@ class AssistantSession:
                 max_tokens=self.max_completion_tokens,
                 temperature=self.temperature,
                 tools=[t.to_dict for t in self.tools], #type: ignore
-                parallel_tool_calls=False,
+                parallel_tool_calls=True,
                 timeout=30
             )
         except openai.BadRequestError as e:
@@ -694,6 +698,8 @@ class Assistant(commands.Cog):
         
         self._sessions = {}
         self._busy : dict[int, bool] = {}
+        self.page_chunks_cache = {}  # Nouveau dictionnaire pour le cache des pages
+        
         self.GPT_TOOLS = [
             GPTTool(name='get_user_notes',
                     description="Renvoie toutes les notes de l'utilisateur visé. Si une clé est donnée, renvoie la note correspondante. Si aucun nom n'est donné, renvoie les notes de l'utilisateur demandeur.",
@@ -723,12 +729,20 @@ class Assistant(commands.Cog):
                                 'num_results': {'type': 'number', 'description': 'Nombre de résultats à renvoyer (max. 10)'},
                                 'lang': {'type': 'string', 'description': "Langue de la page (ex. 'fr')"}},
                     function=self._tool_search_web_pages,
-                    footer="<:web_icon:1338659113638297670> Recherche web"),
+                    footer="<:websearch_icon:1340801019281670255> Recherche web"),
+            GPTTool(name='navigate_page_chunks',
+                    description="Navigue et renvoie une partie (chunk) d'une page web. A utiliser pour lire le contenu des pages trouvées avec l'outil de recherche web.",
+                    properties={
+                        'url': {'type': 'string', 'description': 'URL de la page dont on souhaite extraire le contenu'},
+                        'index': {'type': ['number', 'null'], 'description': "Index de la partie (chunk) de la page à renvoyer (0-indexé)"},
+                    },
+                    function=self._tool_navigate_page_chunks,
+                    footer="<:web_icon:1338659113638297670> Navigation web"),
             GPTTool(name='math_eval',
                    description="Évalue une expression mathématique. Utilise la syntaxe Python standard avec les opérateurs mathématiques classiques.",
                    properties={'expression': {'type': 'string', 'description': "L'expression mathématique à évaluer"}},
                    function=self._tool_math_eval,
-                   footer="<:math_icon:1339332020458754161> Calcul mathématique"),
+                   footer="<:math_icon:1339332020458754161> Calcul mathématique")
         ]
         
     async def cog_unload(self):
@@ -766,7 +780,7 @@ class Assistant(commands.Cog):
                                    temperature, 
                                    self.GPT_TOOLS, 
                                    session_user_name=bucket.name if isinstance(bucket, (discord.User, discord.Member)) else '',
-                                   context_window=int(DEFAULT_CONTEXT_WINDOW / 4) if isinstance(bucket, (discord.User, discord.Member)) else DEFAULT_CONTEXT_WINDOW)
+                                   context_window=int(DEFAULT_CONTEXT_WINDOW / 2) if isinstance(bucket, (discord.User, discord.Member)) else DEFAULT_CONTEXT_WINDOW)
         self._sessions[bucket.id] = session
         return session
     
@@ -880,6 +894,36 @@ class Assistant(commands.Cog):
         """Recherche des informations sur le web."""
         results = search(query, lang=lang, num_results=num_results, advanced=True, safe='off')
         return results
+
+    def fetch_page_chunks(self, url: str, chunk_size: int = WEB_CHUNK_SIZE) -> list[str]:
+        if url in self.page_chunks_cache and self.page_chunks_cache[url]['chunk_size'] == chunk_size:
+            return self.page_chunks_cache[url]['chunks']
+        response = requests.get(url)
+        if response.status_code != 200:
+            return []
+        soup = BeautifulSoup(response.text, "html.parser")
+        for tag in soup(["script", "style", "header", "footer", "nav", "aside"]):
+            tag.decompose()
+        text = soup.get_text(separator="\n", strip=True)
+        text = re.sub(r'\n+', '\n', text)
+        text = re.sub(r'[ \t]+', ' ', text)
+        text = ''.join(c for c in text if c.isprintable() or c in "\n")
+        text = bytes(text, "utf-8").decode("unicode_escape")
+        # Improved smart chunk splitting without breaking words
+        chunks = []
+        start = 0
+        while start < len(text):
+            end = start + chunk_size
+            if end < len(text):
+                last_space = text.rfind(" ", start, end)
+                if last_space != -1 and last_space > start:
+                    end = last_space
+            chunk = text[start:end].strip()
+            if chunk:
+                chunks.append(chunk)
+            start = end
+        self.page_chunks_cache[url] = {'chunks': chunks, 'chunk_size': chunk_size}
+        return chunks
     
     # OUTILS -------------------------------------------------------------------
     
@@ -991,6 +1035,27 @@ class Assistant(commands.Cog):
             return ToolAnswerMessage({'result': result, 'expression': expr}, tool_call.data['id'])
         except Exception as e:
             return ToolAnswerMessage({'error': f"Erreur d'évaluation : {str(e)}"}, tool_call.data['id'])
+
+    def _tool_navigate_page_chunks(self, tool_call: ToolCall, interaction: InteractionGroup) -> ToolAnswerMessage:
+        url = tool_call.arguments.get('url')
+        if not url:
+            return ToolAnswerMessage({'error': "Aucune URL fournie."}, tool_call.data['id'])
+        # Récupérer l'index ou utiliser 0 par défaut
+        index = tool_call.arguments.get('index')
+        try:
+            idx = int(index) if index is not None else 0
+        except Exception:
+            return ToolAnswerMessage({'error': "Index non valide."}, tool_call.data['id'])
+        
+        # Utiliser le cache (ou le remplir) pour obtenir les chunks
+        chunks = self.page_chunks_cache.get(url, {}).get('chunks')
+        if not chunks:
+            chunks = self.fetch_page_chunks(url)
+            if not chunks:
+                return ToolAnswerMessage({'error': "Impossible de récupérer le contenu de la page."}, tool_call.data['id'])
+        if idx < 0 or idx >= len(chunks):
+            return ToolAnswerMessage({'error': "Index hors limites.", 'chunks_total': len(chunks)}, tool_call.data['id'])
+        return ToolAnswerMessage({'chunk': chunks[idx], 'index': idx, 'chunks_total': len(chunks)}, tool_call.data['id'])
     
     # AUDIO --------------------------------------------------------------------
     
