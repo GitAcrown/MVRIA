@@ -34,10 +34,10 @@ COMPLETION_MODEL = 'gpt-4o-mini'
 AUDIO_TRANSCRIPTION_MODEL = 'whisper-1'
 DEFAULT_TEMPERATURE = 0.9
 DEFAULT_MAX_COMPLETION_TOKENS = 512
-DEFAULT_CONTEXT_WINDOW = 16384
+DEFAULT_CONTEXT_WINDOW = 32768
 DEFAULT_TOOLS_ENALBED = True
-CONTEXT_CLEANUP_DELAY = timedelta(minutes=10)
-WEB_CHUNK_SIZE = 2000
+CONTEXT_CLEANUP_DELAY = timedelta(minutes=5)
+WEB_CHUNK_SIZE = 1000
 
 DEFAULT_CUSTOM_GUILD = "Réponds aux questions des utilisateurs de manière concise et simple en adaptant ton langage à celui de tes interlocuteurs."
 DEFAULT_CUSTOM_DM = "Sois le plus direct et concis possible dans tes réponses. N'hésite pas à poser des questions pour mieux comprendre les besoins de l'utilisateur."
