@@ -1140,6 +1140,7 @@ class Assistant(commands.Cog):
             return
         
         bucket = message.channel if message.guild else message.author
+        horodatage = message.created_at.astimezone(pytz.timezone('Europe/Paris')).isoformat()
         is_transcript = False
         # Session privée (DM) -----------------------------------------------
         if isinstance(bucket, (discord.User, discord.Member)):
@@ -1164,7 +1165,7 @@ class Assistant(commands.Cog):
                         except OpenAIError as e:
                             return await message.reply(f"<:error_icon:1338657710333362198> **Erreur** × {e}", mention_author=False)
                         is_transcript = True
-                        user_message = UserMessage([TextChunk(f'[FROM AUDIO TRANSCRIPTION:] {transcription}')], name=message.author.name, discord_message=message)
+                        user_message = UserMessage([TextChunk(f'{horodatage}: [FROM AUDIO TRANSCRIPTION:] {transcription}')], name=message.author.name, discord_message=message)
                 if not user_message.content:
                     return
                 
@@ -1182,7 +1183,15 @@ class Assistant(commands.Cog):
             
             user_message = await UserMessage.from_discord_message(message)
             if not user_message.content:
-                return
+                if message.attachments:
+                    audio = await self.extract_message_audio(message)
+                    if audio:
+                        try:
+                            transcription = await self.audio_transcription(audio)
+                        except OpenAIError as e:
+                            return await message.reply(f"<:error_icon:1338657710333362198> **Erreur** × {e}", mention_author=False)
+                        is_transcript = True
+                        user_message = UserMessage([TextChunk(f'{message.author.name} {horodatage}: [FROM AUDIO TRANSCRIPTION:] {transcription}')], name=message.author.name, discord_message=message)
         else:
             return
             
