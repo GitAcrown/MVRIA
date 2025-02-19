@@ -1330,10 +1330,10 @@ class Assistant(commands.Cog):
         
         if not name:
             self.set_guild_config(interaction.guild, answer_to='')
-            return await interaction.response.send_message("<:settings_icon:1338659554921156640> **Mention désactivée** · L'assistant ne répondra plus à une mention indirecte de son nom.\n-# L'assistant continuera à répondre aux mentions directes.", ephemeral=True)
+            return await interaction.response.send_message("<:settings_icon:1338659554921156640> **Mention désactivée** · L'assistant ne répondra plus à une mention indirecte de son nom.\n-# L'assistant continuera à répondre aux mentions directes.")
         
         self.set_guild_config(interaction.guild, answer_to=name.lower())
-        await interaction.response.send_message(f"<:settings_icon:1338659554921156640> **Mention configurée** · L'assistant répondra à une mention indirecte de ***{name}*** en plus des mentions directes.", ephemeral=True)
+        await interaction.response.send_message(f"<:settings_icon:1338659554921156640> **Mention configurée** · L'assistant répondra à une mention indirecte de ***{name}*** en plus des mentions directes.")
         
     @app_commands.command(name='info')
     async def cmd_info(self, interaction: Interaction):
