@@ -829,7 +829,7 @@ class Assistant(commands.Cog):
         string = self.get_guild_config(guild)['answer_to']
         if not string:
             return False
-        return string in message.clean_content.lower()
+        return string in message.clean_content.lower().split()
         
     # Autorisation d'utilisation
     def is_user_authorized(self, user: discord.User | discord.Member) -> bool:
