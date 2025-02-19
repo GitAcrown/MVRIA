@@ -666,7 +666,8 @@ class Assistant(commands.Cog):
                 'temperature': DEFAULT_TEMPERATURE,
                 'answer_to': f'{bot.user.name.lower()}' if bot.user else '',
                 'authorized': True
-            }
+            },
+            insert_on_reconnect=True
         )
         self.data.map_builders(discord.Guild, guild_config)
         
