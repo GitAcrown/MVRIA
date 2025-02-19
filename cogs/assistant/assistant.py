@@ -36,8 +36,8 @@ DEFAULT_TEMPERATURE = 0.9
 DEFAULT_MAX_COMPLETION_TOKENS = 512
 DEFAULT_CONTEXT_WINDOW = 32768
 DEFAULT_TOOLS_ENALBED = True
-CONTEXT_CLEANUP_DELAY = timedelta(minutes=5)
-WEB_CHUNK_SIZE = 1000
+CONTEXT_CLEANUP_DELAY = timedelta(minutes=10)
+WEB_CHUNK_SIZE = 2000
 
 DEFAULT_CUSTOM_GUILD = "Réponds aux questions des utilisateurs de manière concise et simple en adaptant ton langage à celui de tes interlocuteurs."
 DEFAULT_CUSTOM_DM = "Sois le plus direct et concis possible dans tes réponses. N'hésite pas à poser des questions pour mieux comprendre les besoins de l'utilisateur."
@@ -664,6 +664,7 @@ class Assistant(commands.Cog):
             default_values={
                 'developer_prompt': DEFAULT_CUSTOM_GUILD,
                 'temperature': DEFAULT_TEMPERATURE,
+                'answer_to': f'{bot.user.name.lower()}' if bot.user else '',
                 'authorized': True
             }
         )
@@ -820,6 +821,14 @@ class Assistant(commands.Cog):
         if authorized not in (-1, 0, 1):
             raise ValueError('Valeur d\'autorisation invalide')
         self.data.get().execute('INSERT OR REPLACE INTO user_config (user_id, authorized) VALUES (?, ?)', user.id, authorized)
+        
+    # Réponse automatique
+    def should_trigger_reply(self, guild: discord.Guild, message: discord.Message) -> bool:
+        """Renvoie si l'assistant doit répondre à un message à la mention de son nom."""
+        string = self.get_guild_config(guild)['answer_to']
+        if not string:
+            return False
+        return string in message.clean_content.lower()
         
     # Autorisation d'utilisation
     def is_user_authorized(self, user: discord.User | discord.Member) -> bool:
@@ -1171,7 +1180,7 @@ class Assistant(commands.Cog):
                 
         # Session serveur (seulement si bot mentionné) ----------------------
         elif isinstance(bucket, (discord.TextChannel, discord.Thread)):
-            if not bucket.guild.me.mentioned_in(message):
+            if not bucket.guild.me.mentioned_in(message) and not self.should_trigger_reply(bucket.guild, message):
                 return
             
             if not self.is_guild_authorized(bucket.guild):
@@ -1306,6 +1315,23 @@ class Assistant(commands.Cog):
         if temp > 1.4:
             return await interaction.response.send_message(f"<:settings_icon:1338659554921156640> **Température mise à jour** · La température de génération est désormais à ***{temp}***.\n-# Attention, une température élevée peut entraîner des réponses incohérentes.")
         await interaction.response.send_message(f"<:settings_icon:1338659554921156640> **Température mise à jour** · La température de génération est désormais à ***{temp}***.")
+        
+    @app_commands.command(name='mention')
+    @app_commands.guild_only()
+    @app_commands.rename(name='nom')
+    async def cmd_mention(self, interaction: Interaction, name: str | None = None):
+        """Indiquer à l'assistant s'il doit répondre à une mention indirecte du nom configuré.
+
+        :param name: Nom à mentionner pour déclencher une réponse (laisser vide pour désactiver)"""
+        if not interaction.guild:
+            return await interaction.response.send_message("<:error_icon:1338657710333362198> **Action impossible** × Cette commande est réservée aux serveurs.", ephemeral=True)
+        
+        if not name:
+            self.set_guild_config(interaction.guild, answer_to='')
+            return await interaction.response.send_message("<:settings_icon:1338659554921156640> **Mention désactivée** · L'assistant ne répondra plus à une mention indirecte de son nom.\n-# L'assistant continuera à répondre aux mentions directes.", ephemeral=True)
+        
+        self.set_guild_config(interaction.guild, answer_to=name.lower())
+        await interaction.response.send_message(f"<:settings_icon:1338659554921156640> **Mention configurée** · L'assistant répondra à une mention indirecte de ***{name}*** en plus des mentions directes.", ephemeral=True)
         
     @app_commands.command(name='info')
     async def cmd_info(self, interaction: Interaction):
