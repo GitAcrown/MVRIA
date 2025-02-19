@@ -1180,27 +1180,28 @@ class Assistant(commands.Cog):
                 
         # Session serveur (seulement si bot mentionné) ----------------------
         elif isinstance(bucket, (discord.TextChannel, discord.Thread)):
-            if not bucket.guild.me.mentioned_in(message) and not self.should_trigger_reply(bucket.guild, message):
+            if bucket.guild.me.mentioned_in(message) or self.should_trigger_reply(bucket.guild, message):
+                
+                if not self.is_guild_authorized(bucket.guild):
+                    return await message.channel.send("<:error_icon:1338657710333362198> **Action impossible** × Le serveur n'est pas autorisé à utiliser l'assistant.")
+                
+                session = await self.get_session(bucket)
+                if not session:
+                    return await message.channel.send("<:error_icon:1338657710333362198> **Action impossible** × Impossible de créer une session sur le serveur.")
+                
+                user_message = await UserMessage.from_discord_message(message)
+                if not user_message.content:
+                    if message.attachments:
+                        audio = await self.extract_message_audio(message)
+                        if audio:
+                            try:
+                                transcription = await self.audio_transcription(audio)
+                            except OpenAIError as e:
+                                return await message.reply(f"<:error_icon:1338657710333362198> **Erreur** × {e}", mention_author=False)
+                            is_transcript = True
+                            user_message = UserMessage([TextChunk(f'{message.author.name} {horodatage}: [FROM AUDIO TRANSCRIPTION:] {transcription}')], name=message.author.name, discord_message=message)
+            else:
                 return
-            
-            if not self.is_guild_authorized(bucket.guild):
-                return await message.channel.send("<:error_icon:1338657710333362198> **Action impossible** × Le serveur n'est pas autorisé à utiliser l'assistant.")
-            
-            session = await self.get_session(bucket)
-            if not session:
-                return await message.channel.send("<:error_icon:1338657710333362198> **Action impossible** × Impossible de créer une session sur le serveur.")
-            
-            user_message = await UserMessage.from_discord_message(message)
-            if not user_message.content:
-                if message.attachments:
-                    audio = await self.extract_message_audio(message)
-                    if audio:
-                        try:
-                            transcription = await self.audio_transcription(audio)
-                        except OpenAIError as e:
-                            return await message.reply(f"<:error_icon:1338657710333362198> **Erreur** × {e}", mention_author=False)
-                        is_transcript = True
-                        user_message = UserMessage([TextChunk(f'{message.author.name} {horodatage}: [FROM AUDIO TRANSCRIPTION:] {transcription}')], name=message.author.name, discord_message=message)
         else:
             return
             
