@@ -798,7 +798,7 @@ class Assistant(commands.Cog):
         return self.data.get(guild).get_dict_values('guild_config')
     
     def set_guild_config(self, guild: discord.Guild, **config):
-        self.data.get(guild).set_dict_values('guild_config', {k: v for k, v in config.items() if k in ['developer_prompt', 'temperature', 'authorized']})
+        self.data.get(guild).set_dict_values('guild_config', {k: v for k, v in config.items() if k in ['developer_prompt', 'temperature', 'authorized', 'answer_to']})
         
     # User
     def get_user_config(self, user: discord.User | discord.Member) -> dict:
