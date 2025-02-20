@@ -1321,7 +1321,7 @@ class Assistant(commands.Cog):
     @app_commands.command(name='mention')
     @app_commands.guild_only()
     @app_commands.rename(name='nom')
-    async def cmd_mention(self, interaction: Interaction, name: str | None = None):
+    async def cmd_mention(self, interaction: Interaction, name: app_commands.Range[str, 1, 32] = ''):
         """Indiquer à l'assistant s'il doit répondre à une mention indirecte du nom configuré.
 
         :param name: Nom à mentionner pour déclencher une réponse (laisser vide pour désactiver)"""
@@ -1332,12 +1332,8 @@ class Assistant(commands.Cog):
             self.set_guild_config(interaction.guild, answer_to='')
             return await interaction.response.send_message("<:settings_icon:1338659554921156640> **Mention désactivée** · L'assistant ne répondra plus à une mention indirecte de son nom.\n-# L'assistant continuera à répondre aux mentions directes.")
         
-        if 1 <= len(name) <= 32:
-            return await interaction.response.send_message("<:error_icon:1338657710333362198> **Nom invalide** × Le nom doit contenir entre 1 et 32 caractères.", ephemeral=True)
-        elif not name.isascii():
-            return await interaction.response.send_message("<:error_icon:1338657710333362198> **Nom invalide** × Le nom doit être en caractères ASCII.", ephemeral=True)
-        elif re.search(r'\s', name):
-            return await interaction.response.send_message("<:error_icon:1338657710333362198> **Nom invalide** × Le nom ne doit pas contenir d'espaces.", ephemeral=True)
+        if not name.isascii() or re.search(r'\s', name):
+            return await interaction.response.send_message("<:error_icon:1338657710333362198> **Nom invalide** × Le nom doit être en caractères ASCII et ne doit pas contenir d'espaces.", ephemeral=True)
         
         self.set_guild_config(interaction.guild, answer_to=name.lower())
         await interaction.response.send_message(f"<:settings_icon:1338659554921156640> **Mention configurée** · L'assistant répondra à une mention indirecte de ***{name}*** en plus des mentions directes.")
