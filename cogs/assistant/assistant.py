@@ -1332,6 +1332,13 @@ class Assistant(commands.Cog):
             self.set_guild_config(interaction.guild, answer_to='')
             return await interaction.response.send_message("<:settings_icon:1338659554921156640> **Mention désactivée** · L'assistant ne répondra plus à une mention indirecte de son nom.\n-# L'assistant continuera à répondre aux mentions directes.")
         
+        if 1 <= len(name) <= 32:
+            return await interaction.response.send_message("<:error_icon:1338657710333362198> **Nom invalide** × Le nom doit contenir entre 1 et 32 caractères.", ephemeral=True)
+        elif not name.isascii():
+            return await interaction.response.send_message("<:error_icon:1338657710333362198> **Nom invalide** × Le nom doit être en caractères ASCII.", ephemeral=True)
+        elif re.search(r'\s', name):
+            return await interaction.response.send_message("<:error_icon:1338657710333362198> **Nom invalide** × Le nom ne doit pas contenir d'espaces.", ephemeral=True)
+        
         self.set_guild_config(interaction.guild, answer_to=name.lower())
         await interaction.response.send_message(f"<:settings_icon:1338659554921156640> **Mention configurée** · L'assistant répondra à une mention indirecte de ***{name}*** en plus des mentions directes.")
         
