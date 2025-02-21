@@ -403,7 +403,7 @@ class Reminders(commands.Cog):
             return ascog.ToolAnswerMessage({'error': 'Date et heure non reconnues.'}, tool_call.data['id'])
         
         self.add_reminder(user, content, remind_at)
-        return ascog.ToolAnswerMessage({'user': user.id, 'content': content, 'remind_at': remind_at.strftime('%d/%m/%Y %H:%M')}, tool_call.data['id'])
+        return ascog.ToolAnswerMessage({'user': user.name, 'content': content, 'remind_at': remind_at.strftime('%d/%m/%Y %H:%M')}, tool_call.data['id'])
     
     def _tool_add_recurring_reminder(self, tool_call: ascog.ToolCall, interaction: ascog.InteractionGroup) -> ascog.ToolAnswerMessage:
         user = interaction.fetch_author()
@@ -436,7 +436,7 @@ class Reminders(commands.Cog):
                 return ascog.ToolAnswerMessage({'error': 'Date de fin antérieure à la date du rappel.'}, tool_call.data['id'])
         
         self.add_reminder(user, content, remind_at, True, parsed_rrule, fin)
-        return ascog.ToolAnswerMessage({'user': user.id, 'content': content, 'remind_at': remind_at.strftime('%d/%m/%Y %H:%M'), 'recurrence': recurrence, 'end_date': end_date_iso}, tool_call.data['id'])
+        return ascog.ToolAnswerMessage({'user': user.name, 'content': content, 'remind_at': remind_at.strftime('%d/%m/%Y %H:%M'), 'recurrence': recurrence, 'end_date': end_date_iso}, tool_call.data['id'])
     
     def _tool_list_reminders(self, tool_call: ascog.ToolCall, interaction: ascog.InteractionGroup) -> ascog.ToolAnswerMessage:
         user = interaction.fetch_author()
@@ -448,7 +448,7 @@ class Reminders(commands.Cog):
             return ascog.ToolAnswerMessage({'message': 'Aucun rappel enregistré.'}, tool_call.data['id'])
         
         data = [{'id': r._id, 'content': r.content, 'remind_at': r.remind_at.strftime('%d/%m/%Y %H:%M'), 'is_recurring': r.is_recurring, 'rrule': r.rrule, 'end_date': r.end_date.strftime('%d/%m/%Y %H:%M') if r.end_date else None} for r in reminders]
-        return ascog.ToolAnswerMessage({'reminders': data}, tool_call.data['id'])
+        return ascog.ToolAnswerMessage({'user': user.name, 'reminders': data}, tool_call.data['id'])
     
     def _tool_remove_reminder(self, tool_call: ascog.ToolCall, interaction: ascog.InteractionGroup) -> ascog.ToolAnswerMessage:
         user = interaction.fetch_author()
@@ -464,7 +464,7 @@ class Reminders(commands.Cog):
             return ascog.ToolAnswerMessage({'error': 'Vous n\'êtes pas l\'auteur de ce rappel.'}, tool_call.data['id'])
         
         self.remove_reminder(reminder_id)
-        return ascog.ToolAnswerMessage({'user': user.id, 'reminder_id': reminder_id}, tool_call.data['id'])
+        return ascog.ToolAnswerMessage({'user': user.name, 'reminder_id': reminder_id}, tool_call.data['id'])
     
 async def setup(bot):
     await bot.add_cog(Reminders(bot))
