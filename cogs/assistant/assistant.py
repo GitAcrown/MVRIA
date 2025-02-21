@@ -53,10 +53,9 @@ Tu dois suivre scrupuleusement les instructions personnalisées.
 - Weekday: {d['weekday']}
 [TOOLS]
 Tu es encouragé à utiliser plusieurs outils à la fois si nécessaire.
-- NOTES: Tu peux prendre et gérer des notes sur les utilisateurs. A consulter dès que nécessaire.
-- REMINDERS: Tu peux créer des rappels pour les utilisateurs lorsqu'ils le demandent. A proposer dès que ça peut être utile.
-- WEB SEARCH: Tu peux rechercher des sites et les naviguer pour obtenir des informations. A utiliser pour répondre à des questions.
-- EVALUATE MATH: Tu peux évaluer des expressions mathématiques. A utiliser pour répondre à des questions.
+- REMINDERS: Tu peux créer des rappels pour l'utilisateur demandeur lorsqu'il le demande. A proposer dès que ça peut être utile.
+- WEB SEARCH: Tu peux rechercher des sites et lire leur contenu pour obtenir des informations. A utiliser pour répondre à des questions.
+- EVALUATE MATH: Tu peux évaluer des expressions mathématiques de manière précise.
 [CUSTOM INSTRUCTIONS]
 {d['custom_instructions']}'''
 
@@ -71,10 +70,9 @@ Tu dois suivre scrupuleusement les instructions personnalisées.
 - Weekday: {d['weekday']}
 [TOOLS]
 Tu es encouragé à utiliser plusieurs outils à la fois si nécessaire.
-- NOTES: Tu peux prendre et gérer des notes pour l'utilisateur. Les informations sont à consulter dès que nécessaire.
 - REMINDERS: Tu peux créer des rappels pour l'utilisateur lorsqu'il le demande. A proposer dès que ça peut être utile.
-- WEB SEARCH:  Tu peux rechercher des sites et les naviguer pour obtenir des informations. A utiliser pour répondre à des questions.
-- EVALUATE MATH: Tu peux évaluer des expressions mathématiques. A utiliser pour répondre à des questions.
+- WEB SEARCH:  Tu peux rechercher des sites et lire leur contenu pour obtenir des informations. A utiliser pour répondre à des questions.
+- EVALUATE MATH: Tu peux évaluer des expressions mathématiques de manière précise.
 [CUSTOM INSTRUCTIONS]
 {d['custom_instructions']}'''
 
@@ -704,28 +702,6 @@ class Assistant(commands.Cog):
         self.page_chunks_cache = {}  # Nouveau dictionnaire pour le cache des pages
         
         self.GPT_TOOLS = [
-            GPTTool(name='get_user_notes',
-                    description="Renvoie toutes les notes de l'utilisateur visé. Si une clé est donnée, renvoie la note correspondante. Si aucun nom n'est donné, renvoie les notes de l'utilisateur demandeur.",
-                    properties={'user': {'type': ['string', 'null'], 'description': "Nom de l'utilisateur dont on veut récupérer les notes (par défaut le demandeur)"},
-                                'key': {'type': ['string', 'null'], 'description': "Clé de registre de la note à récupérer (ex. age, ville...)"}},
-                    function=self._tool_get_user_notes,
-                    footer="<:look_icon:1338658889243164712> Consultation de vos notes"),
-            GPTTool(name='set_user_note',
-                    description="Définit une note pour l'utilisateur demandeur avec une clé et une valeur.",
-                    properties={'key': {'type': 'string', 'description': "Clé de registre de la note (ex. age, ville...)"}, 
-                                'value': {'type': 'string', 'description': 'Nouvelle valeur de la note'}},
-                    function=self._tool_set_user_note,
-                    footer="<:write_icon:1338658515593465866> Écriture d'une note"),
-            GPTTool(name='fetch_users_notes',
-                    description="Renvoie les notes de tous les utilisateurs liés à une clé donnée (seulement sur un serveur).",
-                    properties={'key': {'type': 'string', 'description': 'Clé de registre à rechercher'}},
-                    function=self._tool_fetch_users_notes,
-                    footer="<:search_icon:1338658716328792127> Recherche de notes"),
-            GPTTool(name='delete_user_note',
-                    description="Supprime une note de l'utilisateur demandeur avec une clé donnée.",
-                    properties={'key': {'type': 'string', 'description': 'Clé de registre de la note à supprimer'}},
-                    function=self._tool_delete_user_note,
-                    footer="<:trash_icon:1338658009466929152> Suppression d'une note"),
             GPTTool(name='search_web_page',
                     description="Recherche des pages web et renvoie une description des pages trouvées.",
                     properties={'query': {'type': 'string', 'description': 'Requête de recherche'},

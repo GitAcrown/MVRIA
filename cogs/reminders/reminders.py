@@ -13,6 +13,25 @@ from cogs.assistant import assistant as ascog
 
 logger = logging.getLogger(f'MVRIA.{__name__.split(".")[-1]}')
 
+class ConfirmView(discord.ui.View):
+    """Permet de confirmer une action."""
+    def __init__(self, author: discord.Member | discord.User):
+        super().__init__()
+        self.value = False
+        self.author = author
+    
+    @discord.ui.button(label="Confirmer", style=discord.ButtonStyle.success)
+    async def confirm(self, interaction: Interaction, button: discord.ui.Button):
+        await interaction.response.defer(ephemeral=True)
+        self.value = True
+        self.stop()
+    
+    @discord.ui.button(label="Annuler", style=discord.ButtonStyle.danger)
+    async def cancel(self, interaction: Interaction, button: discord.ui.Button):
+        await interaction.response.defer(ephemeral=True)
+        self.value = False
+        self.stop()
+
 class UserReminder:
     def __init__(self, id: int, user: discord.User | discord.Member, content: str, remind_at: datetime, 
                  is_recurring: bool = False, rrule: str | None = None, end_date: datetime | None = None):
@@ -339,6 +358,21 @@ class Reminders(commands.Cog):
         self.remove_reminder(reminder_id)
         await interaction.response.send_message(f"<:trash_icon:1338658009466929152> **Rappel supprimé** • Le rappel pour le <t:{int(reminder.remind_at.timestamp())}:F> a été supprimé.", ephemeral=True)
         
+    @reminder_group.command(name='clear')
+    async def cmd_clear_reminders(self, interaction: Interaction):
+        """Supprimer tous vos rappels"""
+        if not self.get_reminders(interaction.user):
+            return await interaction.response.send_message("**Aucun rappel** • Vous n'avez aucun rappel enregistré.", ephemeral=True)
+        
+        view = ConfirmView(interaction.user)
+        await interaction.response.send_message(f"**Confirmation** · Êtes-vous sûr de vouloir supprimer tous vos rappels ?", ephemeral=True, view=view)
+        await view.wait()
+        if not view.value:
+            return await interaction.edit_original_response(content="**Action annulée** · Les rappels n'ont pas été supprimés.", view=None)
+        
+        self.data.get('global').execute('DELETE FROM reminders WHERE user_id = ?', interaction.user.id)
+        await interaction.edit_original_response(content="**Rappels supprimés** • Tous vos rappels ont été supprimés.", view=None)
+        
     @cmd_remove_reminder.autocomplete('reminder_id')
     async def autocomplete_reminder_id(self, interaction: Interaction, current: str):
         user = interaction.user
@@ -426,7 +460,6 @@ class Reminders(commands.Cog):
         
         self.remove_reminder(reminder_id)
         return ascog.ToolAnswerMessage({'user': user.id, 'reminder_id': reminder_id}, tool_call.data['id'])
-    
     
 async def setup(bot):
     await bot.add_cog(Reminders(bot))
