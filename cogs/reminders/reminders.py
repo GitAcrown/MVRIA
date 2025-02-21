@@ -122,7 +122,9 @@ class Reminders(commands.Cog):
         reminders = self.get_all_reminders()
         for reminder in reminders:
             if reminder.remind_at <= now:
-                await self.send_reminder(reminder)
+                sent = await self.send_reminder(reminder)
+                if not sent:
+                    continue
                 if reminder.is_recurring and reminder.rrule:
                     # Calcul de la prochaine occurrence
                     try:
@@ -243,7 +245,7 @@ class Reminders(commands.Cog):
 
     # Envoi de rappels ---------------------------------------------------------
     
-    async def send_reminder(self, reminder: UserReminder):
+    async def send_reminder(self, reminder: UserReminder) -> bool:
         if reminder.is_recurring:
             text = f"*{reminder.content}*\n-# <:bell_ring_icon:1338660290077655141><:loop_icon:1338661846626074655> <t:{int(reminder.remind_at.timestamp())}:R> · {reminder.user.mention}"
         else:
@@ -252,8 +254,11 @@ class Reminders(commands.Cog):
             dm = await reminder.user.create_dm()
         except discord.Forbidden:
             logger.warning(f"Impossible d'envoyer un message privé à {reminder.user} pour le rappel '{reminder.content}'")
-            return
+            # On efface le rappel si on ne peut pas l'envoyer
+            self.remove_reminder(reminder._id)
+            return False
         await dm.send(text)
+        return True
         
     # Commandes ----------------------------------------------------------------
     
