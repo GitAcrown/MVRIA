@@ -805,7 +805,7 @@ class Assistant(commands.Cog):
         string = self.get_guild_config(guild)['answer_to']
         if not string:
             return False
-        if re.search(rf'\b{re.escape(string)}\b[.!?]*', message.content, re.IGNORECASE):
+        if re.search(rf'\b{re.escape(string)}\b[.!?]*?', message.content, re.IGNORECASE):
             return True
         return False
         
