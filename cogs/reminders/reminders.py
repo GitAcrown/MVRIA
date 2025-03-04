@@ -255,9 +255,9 @@ class Reminders(commands.Cog):
             text = f"*{reminder.content}*\n-# <:bell_ring_icon:1338660290077655141> <t:{int(reminder.remind_at.timestamp())}:R> · {reminder.user.mention}"
         try:
             dm = await reminder.user.create_dm()
-        except Exception:
+            await dm.send(text)
+        except discord.Forbidden:
             return False
-        await dm.send(text)
         return True
         
     # Commandes ----------------------------------------------------------------
