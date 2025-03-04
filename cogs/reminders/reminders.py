@@ -125,6 +125,7 @@ class Reminders(commands.Cog):
                 sent = await self.send_reminder(reminder)
                 if not sent:
                     # Si le message n'a pas pu être envoyé, on supprime le rappel
+                    logger.warning(f"Rappel {reminder._id} non envoyé à {reminder.user} ({reminder.user.id})")
                     self.remove_reminder(reminder._id)
                     continue
                 if reminder.is_recurring and reminder.rrule:
