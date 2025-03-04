@@ -678,17 +678,7 @@ class Assistant(commands.Cog):
                 authorized INTEGER DEFAULT -1
                 )'''
         )
-        # Notes des utilisateurs
-        user_notes = dataio.TableBuilder(
-            '''CREATE TABLE IF NOT EXISTS user_notes (
-                user_id INTEGER,
-                key TEXT,
-                value TEXT,
-                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (user_id, key)
-                )'''
-        )
-        self.data.map_builders('global', user_config, user_notes)
+        self.data.map_builders('global', user_config)
         
         self.client = AsyncOpenAI(api_key=self.bot.config['OPENAI_API_KEY']) #type: ignore
         
@@ -699,7 +689,7 @@ class Assistant(commands.Cog):
         
         self._sessions = {}
         self._busy : dict[int, bool] = {}
-        self.page_chunks_cache = {}  # Nouveau dictionnaire pour le cache des pages
+        self.page_chunks_cache = {}
         
         self.GPT_TOOLS = [
             GPTTool(name='search_web_page',
@@ -1197,7 +1187,20 @@ class Assistant(commands.Cog):
                 return await message.reply("<:error_icon:1338657710333362198> **Erreur** × Aucune réponse n'a été générée pour cette requête.", mention_author=False)
             
             text = completion._content
-            footers = [tool.footer for tool in self.GPT_TOOLS if tool.name in interaction.extras.get('tools_usage', [])]
+            tools_usage = interaction.extras.get('tools_usage', [])
+            # Compter l'utilisation de chaque outil
+            tools_count = {}
+            for tool_name in tools_usage:
+                tools_count[tool_name] = tools_count.get(tool_name, 0) + 1
+                
+            footers = []
+            # Ajouter les footers avec leur compte d'utilisation
+            for tool in self.GPT_TOOLS:
+                if tool.name in tools_count:
+                    count = tools_count[tool.name]
+                    footer = tool.footer + (f' (x{count})' if count > 1 else '')
+                    footers.append(footer)
+                    
             if is_transcript:
                 footers.append("<:transcript_icon:1338656808918712331> Transcription audio")
             if footers:
@@ -1386,61 +1389,6 @@ class Assistant(commands.Cog):
         session.clear_interactions()
         await interaction.edit_original_response(content="<:settings_icon:1338659554921156640> **Paramètres réinitialisés** · Les paramètres de l'assistant ont été réinitialisés.", view=None)
         
-        
-    # Mémoire ------------------------------------------------------------------
-    
-    usernotes_group = app_commands.Group(name='usernotes', description="Gestion des notes de l'assistant vous concernant")
-    
-    @usernotes_group.command(name='list')
-    async def cmd_usernotes_list(self, interaction: Interaction):
-        """Afficher la liste de vos notes personnelles"""
-        user = interaction.user
-        notes = self.get_user_notes(user)
-        if not notes:
-            return await interaction.response.send_message("<:notes_icon:1338661180553564292> **Aucune note trouvée** × Vous n'avez aucune note enregistrée.", ephemeral=True)
-        
-        desc = '\n'.join(sorted([f"`{key}` → *{value}*" for key, value in notes.items()]))
-        embed = discord.Embed(title="<:notes_icon:1338661180553564292> Notes de l'assitant", description=desc, color=discord.Color(0x000001))
-        embed.set_thumbnail(url=user.display_avatar.url)
-        embed.set_footer(text="Ces notes sont gérées par l'assistant et stockées localement. Elles peuvent être partagées à OpenAI lors des requêtes.")
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-        
-    @usernotes_group.command(name='delete')
-    @app_commands.rename(key='clé')
-    async def cmd_usernotes_delete(self, interaction: Interaction, key: str | None = None):
-        """Supprimer une ou toutes vos notes personnelles
-        
-        :param key: Clé de registre de la note à supprimer"""
-        user = interaction.user
-        if not key:
-            view = ConfirmView(user)
-            await interaction.response.send_message(f"**Confirmation** · Êtes-vous sûr de vouloir supprimer toutes les notes de l'assistant associées à vous ?", ephemeral=True, view=view)
-            await view.wait()
-            if not view.value:
-                return await interaction.edit_original_response(content="**Action annulée** · Les notes de l'assistant n'ont pas été supprimées.", view=None)
-            self.delete_all_user_notes(user)
-            return await interaction.edit_original_response(content="<:trash_icon:1338658009466929152> **Notes supprimées** · Toutes les notes de l'assistant associées à vous ont été supprimées.", view=None)
-        
-        notes = self.get_user_notes(user)
-        if not notes:
-            return await interaction.response.send_message(f"<:notes_icon:1338661180553564292> **Notes de l'assistant** · Aucune note n'est associée à vous pour la clé `{key}`.", ephemeral=True)
-        
-        view = ConfirmView(user)
-        await interaction.response.send_message(f"**Confirmation** · Êtes-vous sûr de vouloir supprimer la note de l'assistant associée à vous pour la clé `{key}` ?", ephemeral=True, view=view)
-        await view.wait()
-        if not view.value:
-            return await interaction.edit_original_response(content="**Action annulée** · La note de l'assistant n'a pas été supprimée.", view=None)
-        
-        self.delete_user_note(user, key)
-        await interaction.edit_original_response(content=f"<:trash_icon:1338658009466929152> **Note supprimée** · La note de l'assistant associée à vous pour la clé `{key}` a été supprimée.", view=None)
-        
-    @cmd_usernotes_delete.autocomplete('key')
-    async def autocomplete_key_callback(self, interaction: Interaction, current: str):
-        user = interaction.user
-        keys = self.get_user_notes(user).keys()
-        fuzz = fuzzy.finder(current, keys)
-        return [app_commands.Choice(name=key, value=key) for key in fuzz][:10]
-
     # COMMANDES OWNER ==========================================================
     
     @commands.command(name='guildauth')
