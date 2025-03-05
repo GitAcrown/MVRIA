@@ -7,7 +7,6 @@ import re
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Callable, Iterable, Literal, Sequence
-from dotenv import dotenv_values
 from googlesearch import search
 import numexpr as ne
 import requests
@@ -678,7 +677,18 @@ class Assistant(commands.Cog):
                 authorized INTEGER DEFAULT -1
                 )'''
         )
-        self.data.map_builders('global', user_config)
+        # Notes globales
+        global_notes = dataio.TableBuilder(
+            '''CREATE TABLE IF NOT EXISTS global_notes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT,
+                content TEXT,
+                tags TEXT DEFAULT '',
+                related_user INTEGER,
+                last_update TEXT DEFAULT CURRENT_TIMESTAMP
+                )'''
+        )
+        self.data.map_builders('global', user_config, global_notes)
         
         self.client = AsyncOpenAI(api_key=self.bot.config['OPENAI_API_KEY']) #type: ignore
         
@@ -713,6 +723,10 @@ class Assistant(commands.Cog):
                    function=self._tool_math_eval,
                    footer="<:math_icon:1339332020458754161> Calcul mathématique")
         ]
+        
+        self.GPT_TOOLS.extend([
+            
+        ])
         
     async def cog_unload(self):
         self.data.close_all()
@@ -839,34 +853,22 @@ class Assistant(commands.Cog):
             user = discord.utils.find(lambda u: u.nick == closest_nickname[0], guild.members)
             return user if user else None
     
-    def get_user_notes(self, user: discord.User | discord.Member) -> dict:
-        r = self.data.get().fetchall('SELECT * FROM user_notes WHERE user_id = ?', user.id)
-        return {row['key']: row['value'] for row in r} if r else {}
+    def search_global_notes(self, pattern: str, sort_by: str = 'last_update', sort_order: str = 'DESC') -> list[dict]:
+        if sort_by not in ('title', 'last_update'):
+            raise ValueError('Tri invalide')
+        if sort_order not in ('ASC', 'DESC'):
+            raise ValueError('Ordre de tri invalide')
+        return self.data.get('global').fetchall(f'SELECT * FROM global_notes WHERE title LIKE ? OR content LIKE ? ORDER BY {sort_by} {sort_order}', f'%{pattern}%', f'%{pattern}%')
     
-    def get_user_note_fuzzy(self, user: discord.User | discord.Member, key: str) -> str | None:
-        all_keys = self.data.get().fetchall('SELECT key FROM user_notes WHERE user_id = ?', user.id)
-        if key not in (r['key'] for r in all_keys):
-            closest = fuzzy.extract_one(key, [r['key'] for r in all_keys])
-            if closest and closest[1] > 80:
-                key = closest[0]
-        r = self.data.get().fetchone('SELECT value FROM user_notes WHERE user_id = ? AND key = ?', user.id, key)
-        return r['value'] if r else None
+    def create_global_note(self, title: str, content: str, tags: str, related_user: int) -> None:
+        self.data.get('global').execute('INSERT INTO global_notes (title, content, tags, related_user) VALUES (?, ?, ?, ?)', title, content, tags, related_user)
+        
+    def update_global_note(self, note_id: int, title: str, content: str, tags: str) -> None:
+        self.data.get('global').execute('UPDATE global_notes SET title = ?, content = ?, tags = ? WHERE id = ?', title, content, tags, note_id)
+        
+    def delete_global_note(self, note_id: int) -> None:
+        self.data.get('global').execute('DELETE FROM global_notes WHERE id = ?', note_id)
     
-    def fetch_users_notes(self, guild: discord.Guild, key: str) -> dict:
-        r = self.data.get().fetchall('SELECT user_id, value FROM user_notes WHERE key = ?', key)
-        members = {m.id: m for m in guild.members}
-        return {members[row['user_id']]: row['value'] for row in r} if r else {}
-    
-    def set_user_note(self, user: discord.User | discord.Member, key: str, value: str):
-        new_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        self.data.get().execute('INSERT OR REPLACE INTO user_notes (user_id, key, value, last_updated) VALUES (?, ?, ?, ?)', user.id, key, value, new_timestamp)
-        
-    def delete_user_note(self, user: discord.User | discord.Member, key: str):
-        self.data.get().execute('DELETE FROM user_notes WHERE user_id = ? AND key = ?', user.id, key)
-        
-    def delete_all_user_notes(self, user: discord.User | discord.Member):
-        self.data.get().execute('DELETE FROM user_notes WHERE user_id = ?', user.id)
-        
     # Google ------------------------------------------------------------
     
     def search_web_pages(self, query: str, lang: str = 'fr', num_results: int = 3):
@@ -926,68 +928,6 @@ class Assistant(commands.Cog):
         
     def _remove_tools(self, tools_names: list[str]):
         self.GPT_TOOLS = [t for t in self.GPT_TOOLS if t.name not in tools_names]
-        
-    def _tool_get_user_notes(self, tool_call: ToolCall, interaction: InteractionGroup) -> ToolAnswerMessage:
-        user = None
-        if  tool_call.arguments.get('user'):
-            user = discord.utils.find(lambda u: u.name == tool_call.arguments['user'], self.bot.get_all_members())
-            if not user:
-                channel = interaction.fetch_channel()
-                if channel and channel.guild:
-                    user = self.fetch_user_from_name(channel.guild, tool_call.arguments['user'])
-        elif interaction.fetch_author():
-            user  = interaction.fetch_author()
-            
-        if not user:
-            return ToolAnswerMessage({'error': 'Aucun utilisateur trouvé'}, tool_call.data['id'])
-        
-        notes = self.get_user_notes(user)
-        key = tool_call.arguments.get('key')
-        if not key: # On renvoie toutes les notes
-            if not notes:
-                return ToolAnswerMessage({'error': 'Aucune note trouvée'}, tool_call.data['id'])
-            return ToolAnswerMessage(notes, tool_call.data['id'])
-        # On renvoie une note spécifique
-        value = notes.get(key)
-        if not value:
-            return ToolAnswerMessage({'error': f"Note non trouvée pour '{key}'"}, tool_call.data['id'])
-        return ToolAnswerMessage({key: value}, tool_call.data['id'])
-        
-    def _tool_set_user_note(self, tool_call: ToolCall, interaction: InteractionGroup) -> ToolAnswerMessage:
-        user = interaction.fetch_author()
-        if not user:
-            return ToolAnswerMessage({'error': 'Aucun utilisateur trouvé'}, tool_call.data['id'])
-        key = tool_call.arguments.get('key')
-        value = tool_call.arguments.get('value')
-        if not key or not value:
-            return ToolAnswerMessage({'error': 'Arguments manquants'}, tool_call.data['id'])
-        self.set_user_note(user, key, value)
-        return ToolAnswerMessage({'key': key, 'new_value': value}, tool_call.data['id'])
-    
-    def _tool_fetch_users_notes(self, tool_call: ToolCall, interaction: InteractionGroup) -> ToolAnswerMessage:
-        user = interaction.fetch_author()
-        if not user:
-            return ToolAnswerMessage({'error': 'Aucun utilisateur trouvé'}, tool_call.data['id'])
-        channel = interaction.fetch_channel()
-        if not channel or not channel.guild:
-            return ToolAnswerMessage({'error': 'Commande réservée aux serveurs'}, tool_call.data['id'])
-        key = tool_call.arguments.get('key')
-        if not key:
-            return ToolAnswerMessage({'error': 'Argument manquant'}, tool_call.data['id'])
-        notes = self.fetch_users_notes(channel.guild, key)
-        if not notes:
-            return ToolAnswerMessage({'error': 'Aucune note trouvée'}, tool_call.data['id'])
-        return ToolAnswerMessage(notes, tool_call.data['id'])
-    
-    def _tool_delete_user_note(self, tool_call: ToolCall, interaction: InteractionGroup) -> ToolAnswerMessage:
-        user = interaction.fetch_author()
-        if not user:
-            return ToolAnswerMessage({'error': 'Aucun utilisateur trouvé'}, tool_call.data['id'])
-        key = tool_call.arguments.get('key')
-        if not key:
-            return ToolAnswerMessage({'error': 'Argument manquant'}, tool_call.data['id'])
-        self.delete_user_note(user, key)
-        return ToolAnswerMessage({'deleted_key': key}, tool_call.data['id'])
     
     def _tool_search_web_pages(self, tool_call: ToolCall, interaction: InteractionGroup) -> ToolAnswerMessage:
         query = tool_call.arguments.get('query')
