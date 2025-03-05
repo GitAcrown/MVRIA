@@ -724,10 +724,6 @@ class Assistant(commands.Cog):
                    footer="<:math_icon:1339332020458754161> Calcul mathématique")
         ]
         
-        self.GPT_TOOLS.extend([
-            
-        ])
-        
     async def cog_unload(self):
         self.data.close_all()
         
