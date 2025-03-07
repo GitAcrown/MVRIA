@@ -29,7 +29,8 @@ from common.utils import fuzzy
 
 logger = logging.getLogger(f'MVRIA.{__name__.split(".")[-1]}')
 
-COMPLETION_MODEL = 'gpt-4o'
+COMPLETION_MODEL_GUILD = 'gpt-4o'
+COMPLETION_MODEL_DM = 'gpt-4o-mini'
 AUDIO_TRANSCRIPTION_MODEL = 'whisper-1'
 DEFAULT_TEMPERATURE = 0.9
 DEFAULT_MAX_COMPLETION_TOKENS = 500
@@ -530,6 +531,10 @@ class AssistantSession:
         return not self.channel.guild
     
     @property
+    def gpt_model(self) -> str:
+        return COMPLETION_MODEL_DM if self.is_private else COMPLETION_MODEL_GUILD
+    
+    @property
     def developer_prompt(self) -> DeveloperMessage:
         data = {
             'assistant_name': 'MARIA',
@@ -602,7 +607,7 @@ class AssistantSession:
         
         try:
             completion = await self._cog.client.chat.completions.create(
-                model=COMPLETION_MODEL,
+                model=self.gpt_model,
                 messages=messages, #type: ignore
                 max_tokens=self.max_completion_tokens,
                 temperature=self.temperature,
@@ -1275,7 +1280,7 @@ class Assistant(commands.Cog):
         embed.add_field(name="Température", value=f"```{session.temperature}```")
         
         # Informations sur la session
-        embed.add_field(name="Type de session", value=f"```{'Privée' if session.is_private else 'Serveur'}```")
+        embed.add_field(name="Type | Modèle", value=f"```{'Privée' if session.is_private else 'Serveur'} | {session.gpt_model}```")
         embed.add_field(name="Active depuis", value=f"```{session._session_start.strftime('%d/%m/%Y à %H:%M:%S')}```")
         embed.add_field(name="Nb. d'interactions", value=f"```{len(session._interactions)}```")
         embed.add_field(name="Tokens en mémoire", value=f"```{sum(i.total_token_count for i in session._interactions)}/{session.context_window}```")
