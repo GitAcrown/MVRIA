@@ -34,21 +34,21 @@ COMPLETION_MODEL_DM = 'gpt-4o-mini'
 AUDIO_TRANSCRIPTION_MODEL = 'whisper-1'
 DEFAULT_TEMPERATURE = 0.9
 DEFAULT_MAX_COMPLETION_TOKENS = 500
-DEFAULT_CONTEXT_WINDOW = 12000
+DEFAULT_CONTEXT_WINDOW = 10000
 DEFAULT_TOOLS_ENALBED = True
 CONTEXT_CLEANUP_DELAY = timedelta(minutes=10)
-WEB_CHUNK_SIZE = 2000
+WEB_CHUNK_SIZE = 1000
 
 DEFAULT_CUSTOM_GUILD = "Réponds aux questions des utilisateurs de manière concise et simple en adaptant ton langage à celui de tes interlocuteurs."
 DEFAULT_CUSTOM_DM = "Sois le plus direct et concis possible dans tes réponses. N'hésite pas à poser des questions pour mieux comprendre les besoins de l'utilisateur."
 
 GUILD_DEVELOPER_PROMPT = lambda d: f'''[BEHAVIOR]
 Tu es {d['assistant_name']}, un chatbot conversant avec des utilisateurs dans un salon textuel Discord.
-Les messages d'utilisateur sont au format '<pseudo> <horodatage> : <message>'.
 Ne met jamais ton propre nom ou l'horodatage devant tes réponses.
 Tu peux analyser les images qu'on te donne.
 Tu dois suivre scrupuleusement les instructions personnalisées.
 [INFO]
+- Users messages format : '<name> <datetime> : <msg>'.
 - Current date/time (ISO 8601): {d['current_datetime']}
 - Weekday: {d['weekday']}
 [TOOLS]
@@ -61,11 +61,12 @@ Tu es encouragé à utiliser plusieurs outils à la fois si nécessaire.
 
 DM_DEVELOPER_PROMPT = lambda d: f'''[BEHAVIOR]
 Tu es {d['assistant_name']}, un assistant personnel ayant pour but d'aider ton utilisateur dans ses tâches quotidiennes.
-Les messages de l'utilisateur sont au format '<horodatage> : <message>'. Ne met jamais l'horodatage devant tes réponses.
+Ne met jamais l'horodatage devant tes réponses.
 Tu peux analyser les images que l'utilisateur te donne.
 Tu dois suivre scrupuleusement les instructions personnalisées.
 [INFO]
 - User name: {d['user_name']}
+- User messages format : '<datetime> : <msg>'
 - Current date/time (ISO 8601): {d['current_datetime']}
 - Weekday: {d['weekday']}
 [TOOLS]
@@ -682,18 +683,8 @@ class Assistant(commands.Cog):
                 authorized INTEGER DEFAULT -1
                 )'''
         )
-        # Notes globales
-        global_notes = dataio.TableBuilder(
-            '''CREATE TABLE IF NOT EXISTS global_notes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                title TEXT,
-                content TEXT,
-                tags TEXT DEFAULT '',
-                related_user INTEGER,
-                last_update TEXT DEFAULT CURRENT_TIMESTAMP
-                )'''
-        )
-        self.data.map_builders('global', user_config, global_notes)
+        
+        self.data.map_builders('global', user_config)
         
         self.client = AsyncOpenAI(api_key=self.bot.config['OPENAI_API_KEY']) #type: ignore
         
@@ -710,7 +701,7 @@ class Assistant(commands.Cog):
             GPTTool(name='search_web_page',
                     description="Recherche des pages web et renvoie une description des pages trouvées.",
                     properties={'query': {'type': 'string', 'description': 'Requête de recherche'},
-                                'num_results': {'type': 'number', 'description': 'Nombre de résultats à renvoyer (max. 10)'},
+                                'num_results': {'type': 'number', 'description': 'Nombre de résultats à renvoyer (max. 5)'},
                                 'lang': {'type': 'string', 'description': "Langue de recherche (ex. 'fr', 'en')"}},
                     function=self._tool_search_web_pages,
                     footer="<:websearch_icon:1340801019281670255> Recherche web"),
@@ -726,7 +717,7 @@ class Assistant(commands.Cog):
                    description="Évalue une expression mathématique. Utilise la syntaxe Python standard avec les opérateurs mathématiques classiques.",
                    properties={'expression': {'type': 'string', 'description': "L'expression mathématique à évaluer"}},
                    function=self._tool_math_eval,
-                   footer="<:math_icon:1339332020458754161> Calcul mathématique")
+                   footer="<:math_icon:1339332020458754161> Calcul mathématique"),
         ]
         
     async def cog_unload(self):
@@ -854,21 +845,36 @@ class Assistant(commands.Cog):
             user = discord.utils.find(lambda u: u.nick == closest_nickname[0], guild.members)
             return user if user else None
     
-    def search_global_notes(self, pattern: str, sort_by: str = 'last_update', sort_order: str = 'DESC') -> list[dict]:
-        if sort_by not in ('title', 'last_update'):
-            raise ValueError('Tri invalide')
-        if sort_order not in ('ASC', 'DESC'):
-            raise ValueError('Ordre de tri invalide')
-        return self.data.get('global').fetchall(f'SELECT * FROM global_notes WHERE title LIKE ? OR content LIKE ? ORDER BY {sort_by} {sort_order}', f'%{pattern}%', f'%{pattern}%')
+    def internal_memory_get(self, title: str) -> dict | None:
+        title = title.lower().strip()
+        r = self.data.get().fetchone('SELECT * FROM internal_memory WHERE title = ?', title)
+        return r if r else None
     
-    def create_global_note(self, title: str, content: str, tags: str, related_user: int) -> None:
-        self.data.get('global').execute('INSERT INTO global_notes (title, content, tags, related_user) VALUES (?, ?, ?, ?)', title, content, tags, related_user)
+    def internal_memory_write(self, title: str, content: str, owner: discord.User | discord.Member | None = None, guild: discord.Guild | None = None) -> None:
+        title = title.lower().strip()
+        # On enregistre ou met à jour la note mais on ne change pas le verrouillage
+        self.data.get().execute('INSERT OR REPLACE INTO internal_memory (title, content, lock_user, owner_id, lock_guild, guild_id) VALUES (?, ?, (SELECT lock_user FROM internal_memory WHERE title = ?), ?, (SELECT lock_guild FROM internal_memory WHERE title = ?), ?)', title, content, title, owner.id if owner else None, title, guild.id if guild else None)
         
-    def update_global_note(self, note_id: int, title: str, content: str, tags: str) -> None:
-        self.data.get('global').execute('UPDATE global_notes SET title = ?, content = ?, tags = ? WHERE id = ?', title, content, tags, note_id)
+    def internal_memory_lock(self, title: str, user: bool, guild: bool) -> None:
+        title = title.lower().strip()
+        self.data.get().execute('UPDATE internal_memory SET lock_user = ?, lock_guild = ? WHERE title = ?', user, guild, title)
         
-    def delete_global_note(self, note_id: int) -> None:
-        self.data.get('global').execute('DELETE FROM global_notes WHERE id = ?', note_id)
+    def internal_memory_delete(self, title: str) -> None:
+        title = title.lower().strip()
+        self.data.get().execute('DELETE FROM internal_memory WHERE title = ?', title)
+        
+    def internal_memory_list_titles(self, user: discord.User | discord.Member | None, guild: discord.Guild | None) -> list[str]:
+        if user:
+            r = self.data.get().fetchall('SELECT title FROM internal_memory WHERE owner_id = ?', user.id)
+        elif guild:
+            r = self.data.get().fetchall('SELECT title FROM internal_memory WHERE guild_id = ?', guild.id)
+        else:
+            r = self.data.get().fetchall('SELECT title FROM internal_memory WHERE owner_id IS NULL AND guild_id IS NULL')
+        return [row[0] for row in r]
+    
+    def internal_memory_search(self, pattern: str) -> list[str]:
+        r = self.data.get().fetchall('SELECT title FROM internal_memory WHERE title LIKE ? OR content LIKE ? SORT BY last_update DESC', f'%{pattern}%', f'%{pattern}%')
+        return [row[0] for row in r]
     
     # Google ------------------------------------------------------------
     
@@ -880,30 +886,92 @@ class Assistant(commands.Cog):
     def fetch_page_chunks(self, url: str, chunk_size: int = WEB_CHUNK_SIZE) -> list[str]:
         if url in self.page_chunks_cache and self.page_chunks_cache[url]['chunk_size'] == chunk_size:
             return self.page_chunks_cache[url]['chunks']
-        response = requests.get(url)
-        if response.status_code != 200:
+        
+        # Récupération avec un user-agent pour éviter les blocages
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+            if response.status_code != 200:
+                return []
+        except Exception:
             return []
+            
         soup = BeautifulSoup(response.text, "html.parser")
-        for tag in soup(["script", "style", "header", "footer", "nav", "aside"]):
+        
+        # Suppression agressive des éléments non pertinents
+        for tag in soup(["script", "style", "header", "footer", "nav", "aside", "iframe", 
+                        "noscript", "form", "button", "svg", "canvas", ".ad", ".ads", ".cookie", 
+                        ".popup", ".banner", ".sidebar", ".menu", ".comments"]):
             tag.decompose()
-        text = soup.get_text(separator="\n", strip=True)
-        text = re.sub(r'\n+', '\n', text)
-        text = re.sub(r'[ \t]+', ' ', text)
+        
+        # Détection du contenu principal
+        main_content = None
+        for selector in ['main', 'article', '.content', '.post', '.post-content', '.entry-content', 
+                        '#content', '#main', '.article', '[role="main"]']:
+            content = soup.select(selector)
+            if content and len(str(content[0])) > 500:
+                main_content = content[0]
+                break
+        
+        # Utiliser le contenu principal ou le corps si non trouvé
+        if main_content:
+            text_container = main_content
+        else:
+            body = soup.find('body')
+            text_container = body if body else soup
+        
+        # Extraction intelligente du texte pertinent
+        text = ""
+        for elem in text_container.find_all(['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'td', 'th']):
+            content = elem.get_text(strip=True)
+            # Ignorer les éléments courts ou vides
+            if len(content) > 20 or (elem.name.startswith('h') and content):
+                text += elem.name.startswith('h') and f"\n## {content}\n" or f"\n{content}\n"
+        
+        # Nettoyage du texte
+        text = re.sub(r'\n{3,}', '\n\n', text)  # Réduire les sauts de ligne excessifs
+        text = re.sub(r' {2,}', ' ', text)      # Réduire les espaces multiples
+        
+        # Supprimer les phrases communes de RGPD, cookies, etc.
+        noise_patterns = [
+            r'En poursuivant votre navigation.*?cookies',
+            r'This site uses cookies.*?privacy',
+            r'Nous utilisons des cookies.*?confidentialité',
+            r'Accept [aA]ll cookies',
+            r'cookie policy',
+            r'privacy policy',
+            r'terms of service'
+        ]
+        for pattern in noise_patterns:
+            text = re.sub(pattern, '', text, flags=re.IGNORECASE)
+        
+        # Suppression des lignes qui semblent être des URLs isolées
+        text = re.sub(r'^(https?:|www\.).*$', '', text, flags=re.MULTILINE)
+        
+        # Nettoyage final des caractères non imprimables et normalisation des espaces
         text = ''.join(c for c in text if c.isprintable() or c in "\n")
-        text = bytes(text, "utf-8").decode("unicode_escape")
-        # Improved smart chunk splitting without breaking words
+        text = text.strip()
+        
+        # Division intelligente en chunks qui respecte les paragraphes
         chunks = []
-        start = 0
-        while start < len(text):
-            end = start + chunk_size
-            if end < len(text):
-                last_space = text.rfind(" ", start, end)
-                if last_space != -1 and last_space > start:
-                    end = last_space
-            chunk = text[start:end].strip()
-            if chunk:
-                chunks.append(chunk)
-            start = end
+        paragraphs = [p for p in re.split(r'\n\n+', text) if p.strip()]
+        current_chunk = ""
+        
+        for paragraph in paragraphs:
+            # Si l'ajout du paragraphe dépasse la taille du chunk
+            if len(current_chunk) + len(paragraph) + 2 > chunk_size:
+                if current_chunk:
+                    chunks.append(current_chunk.strip())
+                current_chunk = paragraph
+            else:
+                current_chunk = f"{current_chunk}\n\n{paragraph}" if current_chunk else paragraph
+        
+        # Ajouter le dernier chunk s'il n'est pas vide
+        if current_chunk.strip():
+            chunks.append(current_chunk.strip())
+        
+        # Nettoyer les chunks vides et mettre en cache
+        chunks = [c for c in chunks if len(c.strip()) > 100]
         self.page_chunks_cache[url] = {'chunks': chunks, 'chunk_size': chunk_size}
         return chunks
     
