@@ -1216,9 +1216,12 @@ class Assistant(commands.Cog):
                 'signal_pharos': "<:lighthouse_icon:1355992974537916687> A rédigé un signalement Pharos",
                 'pause_cafe': "<:coffee_icon:1355993335776678189> S'est prise une pause café",
                 'recherche_rest' : "<:agerest_icon:1355993508288401528> A pris une petite pause personnelle",
-                'choco_egg' : "<:egg_icon:1355994122942681098> A mangé un chocolat"
+                'easter_egg' : "<:egg_icon:1355994122942681098> A trouvé un oeuf de Pâques",
+                'mind_upload' : "<:brain_icon:1347561425232728217> A téléchargé son esprit dans le cloud",
+                'camera_access' : "<:look_icon:1338658889243164712> A pris une photo de l'utilisateur",
+                'virus_send' : "<:bug_icon:1355997138768887840> A envoyé un virus à l'utilisateur"
             }
-            if random.randint(0, 2) == 0:
+            if random.randint(0, 3) == 0:
                 special_footer = random.choice(list(special_footers.values()))
                 footers.append(special_footer)
                     
