@@ -17,6 +17,7 @@ import openai
 import pytz
 import tiktoken
 import unidecode
+import random
 from discord import Interaction, app_commands
 from discord.ext import commands
 from moviepy import VideoFileClip
@@ -37,7 +38,7 @@ DEFAULT_MAX_COMPLETION_TOKENS = 500
 DEFAULT_CONTEXT_WINDOW = 10000
 DEFAULT_TOOLS_ENALBED = True
 CONTEXT_CLEANUP_DELAY = timedelta(minutes=10)
-WEB_CHUNK_SIZE = 1000
+WEB_CHUNK_SIZE = 1500
 
 DEFAULT_CUSTOM_GUILD = "Réponds aux questions des utilisateurs de manière concise et simple en adaptant ton langage à celui de tes interlocuteurs."
 DEFAULT_CUSTOM_DM = "Sois le plus direct et concis possible dans tes réponses. N'hésite pas à poser des questions pour mieux comprendre les besoins de l'utilisateur."
@@ -1209,6 +1210,17 @@ class Assistant(commands.Cog):
                     count = tools_count[tool.name]
                     footer = tool.footer + (f' (x{count})' if count > 1 else '')
                     footers.append(footer)
+                    
+            # APRIL FOOLS
+            special_footers = {
+                'signal_pharos': "<:lighthouse_icon:1355992974537916687> A rédigé un signalement Pharos",
+                'pause_cafe': "<:coffee_icon:1355993335776678189> S'est prise une pause café",
+                'recherche_rest' : "<:agerest_icon:1355993508288401528> A pris une petite pause personnelle",
+                'choco_egg' : "<:egg_icon:1355994122942681098> A mangé un chocolat"
+            }
+            if random.randint(0, 2) == 0:
+                special_footer = random.choice(list(special_footers.values()))
+                footers.append(special_footer)
                     
             if is_transcript:
                 footers.append("<:transcript_icon:1338656808918712331> Transcription audio")
