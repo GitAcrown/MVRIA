@@ -1240,7 +1240,7 @@ class Assistant(commands.Cog):
                 
             if random.randint(0, 4) == 0:
                 await asyncio.sleep(0.2)
-                await message.reply(f"**Réflexion limitée** × Souscrivez à un abonnement MARIA+ pour accélérer le temps de réponse de l'assistant en suivant [ce lien](<{random.choice(troll_links)}>).", mention_author=False, delete_after=10)
+                await message.reply(f"**Réflexion limitée** × Souscrivez à un abonnement MARIA+ pour accélérer le temps de réponse de l'assistant en suivant [ce lien](<{random.choice(troll_links)}>).", mention_author=False, delete_after=15)
                 await asyncio.sleep(random.uniform(0.5, 1.5))
             
             content = [text[i:i+2000] for i in range(0, len(text), 2000)]
