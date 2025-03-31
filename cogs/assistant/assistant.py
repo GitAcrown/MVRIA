@@ -1221,7 +1221,7 @@ class Assistant(commands.Cog):
                 'camera_access' : "<:look_icon:1338658889243164712> A pris une photo de l'utilisateur",
                 'virus_send' : "<:bug_icon:1355997138768887840> A envoyé un virus à l'utilisateur"
             }
-            if random.randint(0, 3) == 0:
+            if random.randint(0, 2) == 0:
                 special_footer = random.choice(list(special_footers.values()))
                 footers.append(special_footer)
                     
