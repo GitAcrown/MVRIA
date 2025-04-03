@@ -1211,37 +1211,10 @@ class Assistant(commands.Cog):
                     footer = tool.footer + (f' (x{count})' if count > 1 else '')
                     footers.append(footer)
                     
-            # APRIL FOOLS
-            special_footers = {
-                'signal_pharos': "<:lighthouse_icon:1355992974537916687> A rédigé un signalement Pharos",
-                'pause_cafe': "<:coffee_icon:1355993335776678189> S'est prise une pause café",
-                'recherche_rest' : "<:agerest_icon:1355993508288401528> A pris une petite pause...",
-                'mind_upload' : "<:brain_icon:1347561425232728217> A téléchargé son esprit dans le cloud",
-                'camera_access' : "<:look_icon:1338658889243164712> A pris une photo de l'utilisateur",
-                'virus_send' : "<:bug_icon:1355997138768887840> A envoyé un virus à l'utilisateur"
-            }
-            if random.randint(0, 2) == 0:
-                special_footer = random.choice(list(special_footers.values()))
-                footers.append(special_footer)
-                    
             if is_transcript:
                 footers.append("<:transcript_icon:1338656808918712331> Transcription audio")
             if footers:
                 text += '\n-# ' + ' · '.join((f for f in footers if f))
-                
-            troll_links = [
-                'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-                'https://www.youtube.com/watch?v=vBynw9Isr28',
-                'https://www.youtube.com/watch?v=gpu4f-8vk-I',
-                'https://www.youtube.com/watch?v=VNfFTuIk-dQ',
-                'https://youtu.be/wa6rZ3lSV1o?t=65',
-                'https://www.youtube.com/watch?v=lyuFLU2Zqz0'
-            ]
-                
-            if random.randint(0, 4) == 0:
-                await asyncio.sleep(0.4)
-                await message.reply(f"**Réflexion limitée** × Souscrivez à un abonnement MARIA+ pour accélérer le temps de réponse de l'assistant en suivant [ce lien](<{random.choice(troll_links)}>).", mention_author=False, delete_after=20)
-                await asyncio.sleep(random.uniform(1.0, 2.0))
             
             content = [text[i:i+2000] for i in range(0, len(text), 2000)]
             for _, chunk in enumerate(content):
