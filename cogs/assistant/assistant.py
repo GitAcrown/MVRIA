@@ -17,7 +17,6 @@ import openai
 import pytz
 import tiktoken
 import unidecode
-import random
 from discord import Interaction, app_commands
 from discord.ext import commands
 from moviepy import VideoFileClip
@@ -30,15 +29,15 @@ from common.utils import fuzzy
 
 logger = logging.getLogger(f'MVRIA.{__name__.split(".")[-1]}')
 
-COMPLETION_MODEL_GUILD = 'gpt-4o'
-COMPLETION_MODEL_DM = 'gpt-4o-mini'
+COMPLETION_MODEL_GUILD = 'gpt-4.1-mini'
+COMPLETION_MODEL_DM = 'gpt-4.1-mini'
 AUDIO_TRANSCRIPTION_MODEL = 'whisper-1'
 DEFAULT_TEMPERATURE = 0.9
 DEFAULT_MAX_COMPLETION_TOKENS = 500
-DEFAULT_CONTEXT_WINDOW = 10000
+DEFAULT_CONTEXT_WINDOW = 512 * 32 # 16k tokens
 DEFAULT_TOOLS_ENALBED = True
 CONTEXT_CLEANUP_DELAY = timedelta(minutes=10)
-WEB_CHUNK_SIZE = 1500
+WEB_CHUNK_SIZE = 2000
 
 DEFAULT_CUSTOM_GUILD = "Réponds aux questions des utilisateurs de manière concise et simple en adaptant ton langage à celui de tes interlocuteurs."
 DEFAULT_CUSTOM_DM = "Sois le plus direct et concis possible dans tes réponses. N'hésite pas à poser des questions pour mieux comprendre les besoins de l'utilisateur."
@@ -702,7 +701,7 @@ class Assistant(commands.Cog):
             GPTTool(name='search_web_page',
                     description="Recherche des pages web et renvoie une description des pages trouvées.",
                     properties={'query': {'type': 'string', 'description': 'Requête de recherche'},
-                                'num_results': {'type': 'number', 'description': 'Nombre de résultats à renvoyer (max. 5)'},
+                                'num_results': {'type': 'number', 'description': 'Nombre de résultats à renvoyer (max. 10)'},
                                 'lang': {'type': 'string', 'description': "Langue de recherche (ex. 'fr', 'en')"}},
                     function=self._tool_search_web_pages,
                     footer="<:websearch_icon:1340801019281670255> Recherche web"),
@@ -879,7 +878,7 @@ class Assistant(commands.Cog):
     
     # Google ------------------------------------------------------------
     
-    def search_web_pages(self, query: str, lang: str = 'fr', num_results: int = 3):
+    def search_web_pages(self, query: str, lang: str = 'fr', num_results: int = 5):
         """Recherche des informations sur le web."""
         results = search(query, lang=lang, num_results=num_results, advanced=True, safe='off')
         return results
